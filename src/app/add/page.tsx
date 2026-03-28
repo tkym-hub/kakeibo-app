@@ -53,7 +53,7 @@ export default function AddTransactionPage() {
           </h1>
         </header>
 
-        <div className="max-w-md space-y-8">
+        <div className="w-full max-w-[1034px] space-y-8">
           {/* Amount Input */}
           <div className="text-center py-8">
             <div className="flex items-baseline justify-center gap-2">
