@@ -3,7 +3,7 @@
 import { useState, useEffect, useMemo } from "react"
 import { AppLayout } from "@/components/app-layout"
 import { MonthSelector } from "@/components/month-selector"
-import { formatCurrency, getTransactions, getAccounts, getCategories, getCurrentMonth } from "@/lib/data"
+import { formatCurrency, getTransactions, getAccounts, getCategories, getCurrentMonth, shiftMonth } from "@/lib/data"
 import { Transaction, Account, Category } from "@/lib/types"
 import { cn } from "@/lib/utils"
 
@@ -46,12 +46,6 @@ function Section({ title, total, items, type = "expense" }: SectionProps) {
   )
 }
 
-function shiftMonth(month: string, delta: number): string {
-  const match = month.match(/(\d{4})年(\d{1,2})月/)
-  if (!match) return month
-  const date = new Date(parseInt(match[1]), parseInt(match[2]) - 1 + delta)
-  return `${date.getFullYear()}年${date.getMonth() + 1}月`
-}
 
 export default function MonthlyDetailsPage() {
   const [currentMonth, setCurrentMonth] = useState(getCurrentMonth())
@@ -113,7 +107,7 @@ export default function MonthlyDetailsPage() {
         items: groupByCategory(investmentTxs),
       },
     }
-  }, [transactions])
+  }, [transactions, categories])
 
   const totalExpense = monthlyBreakdown.fixedExpenses.total + monthlyBreakdown.variableExpenses.total
   const balance = monthlyBreakdown.income.total - totalExpense - monthlyBreakdown.investments.total

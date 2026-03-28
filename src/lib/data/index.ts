@@ -67,9 +67,11 @@ export async function getAccounts(): Promise<Account[]> {
   if (error) throw error
 
   // 口座ごとの累積入出金を一括取得
-  const { data: txData } = await supabase
+  const { data: txData, error: txError } = await supabase
     .from("transactions")
     .select("account_id, type, amount")
+
+  if (txError) throw txError
 
   const balanceMap: Record<string, number> = {}
   for (const tx of txData ?? []) {
@@ -208,4 +210,11 @@ export function groupTransactionsByDate(
 export function getCurrentMonth(): string {
   const now = new Date()
   return `${now.getFullYear()}年${now.getMonth() + 1}月`
+}
+
+export function shiftMonth(month: string, delta: number): string {
+  const match = month.match(/(\d{4})年(\d{1,2})月/)
+  if (!match) return month
+  const date = new Date(parseInt(match[1]), parseInt(match[2]) - 1 + delta)
+  return `${date.getFullYear()}年${date.getMonth() + 1}月`
 }

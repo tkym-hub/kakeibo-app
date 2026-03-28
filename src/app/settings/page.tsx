@@ -100,7 +100,7 @@ export default function SettingsPage() {
     if (!newCategoryName.trim()) return
     const user = await getUser()
     if (!user) return
-    await supabase.from("categories").insert({
+    const { error } = await supabase.from("categories").insert({
       user_id: user.id,
       name: newCategoryName.trim(),
       type: newCategoryType,
@@ -108,6 +108,7 @@ export default function SettingsPage() {
       is_fixed: false,
       is_active: true,
     })
+    if (error) { alert("追加に失敗しました"); return }
     setNewCategoryName("")
     setAddCategoryOpen(false)
     loadData()
@@ -116,14 +117,16 @@ export default function SettingsPage() {
   // カテゴリ名変更
   async function handleRenameCategory() {
     if (!editingCategory || !editCategoryName.trim()) return
-    await supabase.from("categories").update({ name: editCategoryName.trim() }).eq("id", editingCategory.id)
+    const { error } = await supabase.from("categories").update({ name: editCategoryName.trim() }).eq("id", editingCategory.id)
+    if (error) { alert("変更に失敗しました"); return }
     setEditingCategory(null)
     loadData()
   }
 
   // カテゴリ削除
   async function handleDeleteCategory(id: string) {
-    await supabase.from("categories").update({ is_active: false }).eq("id", id)
+    const { error } = await supabase.from("categories").update({ is_active: false }).eq("id", id)
+    if (error) { alert("削除に失敗しました"); return }
     loadData()
   }
 
@@ -132,7 +135,7 @@ export default function SettingsPage() {
     if (!newAccountName.trim()) return
     const user = await getUser()
     if (!user) return
-    await supabase.from("accounts").insert({
+    const { error } = await supabase.from("accounts").insert({
       user_id: user.id,
       name: newAccountName.trim(),
       kind: newAccountKind,
@@ -140,6 +143,7 @@ export default function SettingsPage() {
       sort_order: 99,
       is_active: true,
     })
+    if (error) { alert("追加に失敗しました"); return }
     setNewAccountName("")
     setNewAccountBalance("")
     setAddAccountOpen(false)
@@ -149,14 +153,16 @@ export default function SettingsPage() {
   // 口座名変更
   async function handleRenameAccount() {
     if (!editingAccount || !editAccountName.trim()) return
-    await supabase.from("accounts").update({ name: editAccountName.trim() }).eq("id", editingAccount.id)
+    const { error } = await supabase.from("accounts").update({ name: editAccountName.trim() }).eq("id", editingAccount.id)
+    if (error) { alert("変更に失敗しました"); return }
     setEditingAccount(null)
     loadData()
   }
 
   // 口座削除
   async function handleDeleteAccount(id: string) {
-    await supabase.from("accounts").update({ is_active: false }).eq("id", id)
+    const { error } = await supabase.from("accounts").update({ is_active: false }).eq("id", id)
+    if (error) { alert("削除に失敗しました"); return }
     loadData()
   }
 
@@ -165,7 +171,7 @@ export default function SettingsPage() {
     if (!newTplName.trim() || !newTplAmount || !newTplCategoryId || !newTplAccountId || !newTplDay) return
     const user = await getUser()
     if (!user) return
-    await supabase.from("recurring_templates").insert({
+    const { error } = await supabase.from("recurring_templates").insert({
       user_id: user.id,
       name: newTplName.trim(),
       amount: parseInt(newTplAmount),
@@ -175,6 +181,7 @@ export default function SettingsPage() {
       day_of_month: parseInt(newTplDay),
       is_active: true,
     })
+    if (error) { alert("追加に失敗しました"); return }
     setNewTplName(""); setNewTplAmount(""); setNewTplCategoryId(""); setNewTplAccountId(""); setNewTplDay("")
     setAddTplOpen(false)
     loadData()
@@ -182,7 +189,8 @@ export default function SettingsPage() {
 
   // テンプレート削除
   async function handleDeleteTemplate(id: string) {
-    await supabase.from("recurring_templates").update({ is_active: false }).eq("id", id)
+    const { error } = await supabase.from("recurring_templates").update({ is_active: false }).eq("id", id)
+    if (error) { alert("削除に失敗しました"); return }
     loadData()
   }
 
@@ -197,24 +205,44 @@ export default function SettingsPage() {
     const year = now.getFullYear()
     const month = now.getMonth() + 1
     const lastDay = new Date(year, month, 0).getDate()
+    const monthStart = `${year}-${String(month).padStart(2, "0")}-01`
+    const monthEnd = `${year}-${String(month).padStart(2, "0")}-${String(lastDay).padStart(2, "0")}`
 
-    const rows = templates.map((tpl) => {
-      const day = Math.min(tpl.day_of_month, lastDay)
-      const txn_date = `${year}-${String(month).padStart(2, "0")}-${String(day).padStart(2, "0")}`
-      return {
-        user_id: user.id,
-        type: tpl.type,
-        amount: tpl.amount,
-        category_id: tpl.category_id,
-        account_id: tpl.account_id,
-        txn_date,
-        memo: tpl.name,
-      }
-    })
+    // 今月すでに登録済みのテンプレート名（memo）を取得して重複防止
+    const { data: existing } = await supabase
+      .from("transactions")
+      .select("memo")
+      .eq("user_id", user.id)
+      .gte("txn_date", monthStart)
+      .lte("txn_date", monthEnd)
+    const existingMemos = new Set((existing ?? []).map((r) => r.memo))
 
-    await supabase.from("transactions").insert(rows)
+    const rows = templates
+      .filter((tpl) => !existingMemos.has(tpl.name))
+      .map((tpl) => {
+        const day = Math.min(tpl.day_of_month, lastDay)
+        const txn_date = `${year}-${String(month).padStart(2, "0")}-${String(day).padStart(2, "0")}`
+        return {
+          user_id: user.id,
+          type: tpl.type,
+          amount: tpl.amount,
+          category_id: tpl.category_id,
+          account_id: tpl.account_id,
+          txn_date,
+          memo: tpl.name,
+        }
+      })
+
+    if (rows.length === 0) {
+      setApplyingTemplates(false)
+      alert(`${getCurrentMonth()}分はすでに登録済みです`)
+      return
+    }
+
+    const { error } = await supabase.from("transactions").insert(rows)
     setApplyingTemplates(false)
-    alert(`${getCurrentMonth()}分の固定費を登録しました`)
+    if (error) { alert("登録に失敗しました"); return }
+    alert(`${getCurrentMonth()}分の固定費を${rows.length}件登録しました`)
   }
 
   const incomeCategories = categories.filter((c) => c.type === "income")

@@ -3,7 +3,7 @@
 import { useState, useEffect, useMemo } from "react"
 import { AppLayout } from "@/components/app-layout"
 import { MonthSelector } from "@/components/month-selector"
-import { getTransactions, getCategories, getAccounts, formatCurrency, formatDate, groupTransactionsByDate, getCurrentMonth } from "@/lib/data"
+import { getTransactions, getCategories, getAccounts, formatCurrency, formatDate, groupTransactionsByDate, getCurrentMonth, shiftMonth } from "@/lib/data"
 import { Transaction, Category, Account, TransactionType } from "@/lib/types"
 import { supabase } from "@/lib/supabase"
 import { cn } from "@/lib/utils"
@@ -25,12 +25,6 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog"
 
-function shiftMonth(month: string, delta: number): string {
-  const match = month.match(/(\d{4})年(\d{1,2})月/)
-  if (!match) return month
-  const date = new Date(parseInt(match[1]), parseInt(match[2]) - 1 + delta)
-  return `${date.getFullYear()}年${date.getMonth() + 1}月`
-}
 
 export default function TransactionsPage() {
   const [currentMonth, setCurrentMonth] = useState(getCurrentMonth())
@@ -85,7 +79,7 @@ export default function TransactionsPage() {
   async function handleUpdate() {
     if (!editingTx || !editAmount || !editCategoryId || !editAccountId) return
     setSaving(true)
-    await supabase.from("transactions").update({
+    const { error } = await supabase.from("transactions").update({
       type: editType,
       amount: parseInt(editAmount),
       category_id: editCategoryId,
@@ -93,19 +87,21 @@ export default function TransactionsPage() {
       txn_date: editDate,
       memo: editMemo || null,
     }).eq("id", editingTx.id)
-    setEditingTx(null)
     setSaving(false)
+    if (error) { alert("保存に失敗しました"); return }
+    setEditingTx(null)
     loadTransactions()
   }
 
   async function handleDelete(id: string) {
-    await supabase.from("transactions").delete().eq("id", id)
+    const { error } = await supabase.from("transactions").delete().eq("id", id)
+    if (error) { alert("削除に失敗しました"); return }
     setTransactions((prev) => prev.filter((t) => t.id !== id))
   }
 
   const filteredTransactions = useMemo(() => transactions.filter((t) => {
-    if (categoryFilter !== "all" && t.category !== categoryFilter) return false
-    if (accountFilter !== "all" && t.account !== accountFilter) return false
+    if (categoryFilter !== "all" && t.category_id !== categoryFilter) return false
+    if (accountFilter !== "all" && t.account_id !== accountFilter) return false
     if (typeFilter !== "all" && t.type !== typeFilter) return false
     return true
   }), [transactions, categoryFilter, accountFilter, typeFilter])
@@ -187,7 +183,7 @@ export default function TransactionsPage() {
                 <SelectContent>
                   <SelectItem value="all">すべて</SelectItem>
                   {categories.map((c) => (
-                    <SelectItem key={c.id} value={c.name}>{c.icon} {c.name}</SelectItem>
+                    <SelectItem key={c.id} value={c.id}>{c.icon} {c.name}</SelectItem>
                   ))}
                 </SelectContent>
               </Select>
@@ -198,7 +194,7 @@ export default function TransactionsPage() {
                 <SelectContent>
                   <SelectItem value="all">すべて</SelectItem>
                   {accounts.map((a) => (
-                    <SelectItem key={a.id} value={a.name}>{a.icon} {a.name}</SelectItem>
+                    <SelectItem key={a.id} value={a.id}>{a.icon} {a.name}</SelectItem>
                   ))}
                 </SelectContent>
               </Select>
