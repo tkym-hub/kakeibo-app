@@ -1,9 +1,10 @@
 "use client"
 
 import Link from "next/link"
-import { usePathname } from "next/navigation"
-import { LayoutDashboard, Plus, List, BarChart3, Settings } from "lucide-react"
+import { usePathname, useRouter } from "next/navigation"
+import { LayoutDashboard, Plus, List, BarChart3, Settings, LogOut } from "lucide-react"
 import { cn } from "@/lib/utils"
+import { supabase } from "@/lib/supabase"
 
 const navItems = [
   { href: "/", label: "ダッシュボード", icon: LayoutDashboard },
@@ -15,6 +16,12 @@ const navItems = [
 
 export function SidebarNav() {
   const pathname = usePathname()
+  const router = useRouter()
+
+  async function handleLogout() {
+    await supabase.auth.signOut()
+    router.push("/login")
+  }
 
   return (
     <aside className="hidden md:flex md:w-60 md:flex-col md:fixed md:inset-y-0 bg-card border-r border-border/50">
@@ -46,6 +53,15 @@ export function SidebarNav() {
           })}
         </ul>
       </nav>
+      <div className="px-4 py-4 border-t border-border/50">
+        <button
+          onClick={handleLogout}
+          className="flex w-full items-center gap-3 rounded-xl px-4 py-3 text-sm text-muted-foreground hover:text-foreground hover:bg-muted/50 transition-colors"
+        >
+          <LogOut className="h-4 w-4" strokeWidth={1.5} />
+          ログアウト
+        </button>
+      </div>
     </aside>
   )
 }

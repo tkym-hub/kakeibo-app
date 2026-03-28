@@ -1,7 +1,7 @@
 import Link from "next/link"
 import { ArrowRight } from "lucide-react"
 import { Transaction } from "@/lib/types"
-import { formatCurrency, formatDate, categories } from "@/lib/data"
+import { formatCurrency, formatDate } from "@/lib/data"
 import { cn } from "@/lib/utils"
 
 interface RecentTransactionsProps {
@@ -27,13 +27,11 @@ export function RecentTransactions({ transactions }: RecentTransactionsProps) {
       </div>
 
       <div className="rounded-2xl bg-card divide-y divide-border/50">
-        {recent.map((transaction) => {
-          const category = categories.find((c) => c.name === transaction.category)
-          return (
+        {recent.map((transaction) => (
             <div key={transaction.id} className="flex items-center justify-between px-6 py-5">
               <div className="flex items-center gap-4">
                 <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-muted/50 text-base">
-                  {category?.icon || ""}
+                  {transaction.icon ?? "📦"}
                 </div>
                 <div>
                   <p className="text-sm font-medium text-foreground">{transaction.category}</p>
@@ -52,8 +50,7 @@ export function RecentTransactions({ transactions }: RecentTransactionsProps) {
                 {formatCurrency(transaction.amount)}
               </span>
             </div>
-          )
-        })}
+        ))}
       </div>
     </div>
   )
