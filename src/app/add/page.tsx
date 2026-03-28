@@ -186,7 +186,7 @@ export default function AddTransactionPage() {
           {/* Submit Button */}
           <Button
             onClick={handleSubmit}
-            disabled={!amount || !selectedCategory}
+            disabled={!amount || amount === "0" || !selectedCategory}
             className="w-full h-14 rounded-full text-base"
           >
             保存する

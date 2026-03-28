@@ -1,45 +1,13 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useMemo } from "react"
 import { AppLayout } from "@/components/app-layout"
 import { MonthSelector } from "@/components/month-selector"
-import { formatCurrency, accounts } from "@/lib/data"
+import { formatCurrency, accounts, transactions } from "@/lib/data"
 import { cn } from "@/lib/utils"
 
-const monthlyBreakdown = {
-  income: {
-    total: 405000,
-    items: [
-      { name: "給与", amount: 380000 },
-      { name: "副業", amount: 25000 },
-    ],
-  },
-  fixedExpenses: {
-    total: 124300,
-    items: [
-      { name: "住居費", amount: 95000 },
-      { name: "通信費", amount: 11300 },
-      { name: "光熱費", amount: 16500 },
-      { name: "保険料", amount: 1500 },
-    ],
-  },
-  variableExpenses: {
-    total: 46600,
-    items: [
-      { name: "食費", amount: 25200 },
-      { name: "交通費", amount: 15000 },
-      { name: "娯楽", amount: 5600 },
-      { name: "日用品", amount: 800 },
-    ],
-  },
-  investments: {
-    total: 50000,
-    items: [
-      { name: "積立NISA", amount: 50000 },
-    ],
-  },
-  carryover: 1907000,
-}
+const FIXED_EXPENSE_CATEGORIES = new Set(["住居費", "通信費", "光熱費", "保険料"])
+const INVESTMENT_CATEGORIES = new Set(["投資"])
 
 interface SectionProps {
   title: string
@@ -80,6 +48,73 @@ function Section({ title, total, items, type = "expense" }: SectionProps) {
 export default function MonthlyDetailsPage() {
   const [currentMonth, setCurrentMonth] = useState("2026年4月")
 
+  const handlePreviousMonth = () => {
+    setCurrentMonth((prev) => {
+      const match = prev.match(/(\d{4})年(\d{1,2})月/)
+      if (!match) return prev
+      const date = new Date(parseInt(match[1]), parseInt(match[2]) - 2)
+      return `${date.getFullYear()}年${date.getMonth() + 1}月`
+    })
+  }
+
+  const handleNextMonth = () => {
+    setCurrentMonth((prev) => {
+      const match = prev.match(/(\d{4})年(\d{1,2})月/)
+      if (!match) return prev
+      const date = new Date(parseInt(match[1]), parseInt(match[2]))
+      return `${date.getFullYear()}年${date.getMonth() + 1}月`
+    })
+  }
+
+  const monthlyBreakdown = useMemo(() => {
+    const match = currentMonth.match(/(\d{4})年(\d{1,2})月/)
+    if (!match) return null
+    const year = parseInt(match[1])
+    const month = parseInt(match[2])
+
+    const monthTransactions = transactions.filter((t) => {
+      const d = new Date(t.date)
+      return d.getFullYear() === year && d.getMonth() + 1 === month
+    })
+
+    const groupByCategory = (txs: typeof transactions) => {
+      const grouped = txs.reduce<Record<string, number>>((acc, t) => {
+        acc[t.category] = (acc[t.category] || 0) + t.amount
+        return acc
+      }, {})
+      return Object.entries(grouped).map(([name, amount]) => ({ name, amount }))
+    }
+
+    const incomeTxs = monthTransactions.filter((t) => t.type === "income")
+    const expenseTxs = monthTransactions.filter((t) => t.type === "expense")
+    const investmentTxs = expenseTxs.filter((t) => INVESTMENT_CATEGORIES.has(t.category))
+    const fixedTxs = expenseTxs.filter((t) => FIXED_EXPENSE_CATEGORIES.has(t.category))
+    const variableTxs = expenseTxs.filter(
+      (t) => !FIXED_EXPENSE_CATEGORIES.has(t.category) && !INVESTMENT_CATEGORIES.has(t.category)
+    )
+
+    return {
+      income: {
+        total: incomeTxs.reduce((s, t) => s + t.amount, 0),
+        items: groupByCategory(incomeTxs),
+      },
+      fixedExpenses: {
+        total: fixedTxs.reduce((s, t) => s + t.amount, 0),
+        items: groupByCategory(fixedTxs),
+      },
+      variableExpenses: {
+        total: variableTxs.reduce((s, t) => s + t.amount, 0),
+        items: groupByCategory(variableTxs),
+      },
+      investments: {
+        total: investmentTxs.reduce((s, t) => s + t.amount, 0),
+        items: groupByCategory(investmentTxs),
+      },
+    }
+  }, [currentMonth])
+
+  if (!monthlyBreakdown) return null
+
   const totalExpense = monthlyBreakdown.fixedExpenses.total + monthlyBreakdown.variableExpenses.total
   const balance = monthlyBreakdown.income.total - totalExpense - monthlyBreakdown.investments.total
 
@@ -95,7 +130,11 @@ export default function MonthlyDetailsPage() {
             <h1 className="text-2xl font-medium tracking-tight text-foreground md:text-3xl">
               {currentMonth}
             </h1>
-            <MonthSelector month={currentMonth} />
+            <MonthSelector
+              month={currentMonth}
+              onPrevious={handlePreviousMonth}
+              onNext={handleNextMonth}
+            />
           </div>
         </header>
 
