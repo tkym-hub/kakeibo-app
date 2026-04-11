@@ -140,7 +140,7 @@ export default function TransactionsPage() {
                 aria-label="並び替え"
               >
                 <ArrowUpDown className="h-3.5 w-3.5" />
-                {sortOrder === "desc" ? "新しい順" : "古い順"}
+                <span className="hidden md:inline">{sortOrder === "desc" ? "新しい順" : "古い順"}</span>
               </button>
               <button
                 onClick={() => setShowFilters(!showFilters)}
@@ -153,7 +153,7 @@ export default function TransactionsPage() {
                 aria-label="絞り込み"
               >
                 <SlidersHorizontal className="h-3.5 w-3.5" />
-                絞り込み
+                <span className="hidden md:inline">絞り込み</span>
               </button>
               <MonthSelector
                 month={currentMonth}
