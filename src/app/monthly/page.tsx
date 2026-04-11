@@ -4,8 +4,8 @@ import { useState, useEffect, useMemo } from "react"
 import Link from "next/link"
 import { AppLayout } from "@/components/app-layout"
 import { MonthSelector } from "@/components/month-selector"
-import { formatCurrency, getTransactions, getAccounts, getCategories, getCurrentMonth, shiftMonth } from "@/lib/data"
-import { Transaction, Account, Category } from "@/lib/types"
+import { formatCurrency, getTransactions, getAccounts, getCategories, getTemplates, getCurrentMonth, shiftMonth } from "@/lib/data"
+import { Transaction, Account, Category, RecurringTemplate } from "@/lib/types"
 import { cn } from "@/lib/utils"
 
 // 投資カテゴリは名前ベースで判定（DBにis_investmentフラグがないため）
@@ -53,6 +53,7 @@ export default function MonthlyDetailsPage() {
   const [transactions, setTransactions] = useState<Transaction[]>([])
   const [accounts, setAccounts] = useState<Account[]>([])
   const [categories, setCategories] = useState<Category[]>([])
+  const [templates, setTemplates] = useState<RecurringTemplate[]>([])
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
@@ -61,18 +62,23 @@ export default function MonthlyDetailsPage() {
       getTransactions(currentMonth),
       getAccounts(),
       getCategories(),
-    ]).then(([txs, accs, cats]) => {
+      getTemplates(),
+    ]).then(([txs, accs, cats, tpls]) => {
       setTransactions(txs)
       setAccounts(accs)
       setCategories(cats)
+      setTemplates(tpls)
     }).finally(() => setLoading(false))
   }, [currentMonth])
 
   const monthlyBreakdown = useMemo(() => {
-    // DBのis_fixedフラグから固定費カテゴリ名のセットを構築
-    const fixedCategoryNames = new Set(
-      categories.filter((c) => c.is_fixed).map((c) => c.name)
-    )
+    // 固定費カテゴリIDの判定:
+    //   1. categories.is_fixed = true のもの
+    //   2. recurring_templates に登録されているカテゴリ（ユーザーが固定費として登録したもの）
+    const fixedCategoryIds = new Set([
+      ...categories.filter((c) => c.is_fixed).map((c) => c.id),
+      ...templates.map((t) => t.category_id),
+    ])
 
     const groupByCategory = (txs: Transaction[]) => {
       const grouped = txs.reduce<Record<string, number>>((acc, t) => {
@@ -85,9 +91,9 @@ export default function MonthlyDetailsPage() {
     const incomeTxs = transactions.filter((t) => t.type === "income")
     const expenseTxs = transactions.filter((t) => t.type === "expense")
     const investmentTxs = expenseTxs.filter((t) => INVESTMENT_CATEGORIES.has(t.category))
-    const fixedTxs = expenseTxs.filter((t) => fixedCategoryNames.has(t.category))
+    const fixedTxs = expenseTxs.filter((t) => fixedCategoryIds.has(t.category_id))
     const variableTxs = expenseTxs.filter(
-      (t) => !fixedCategoryNames.has(t.category) && !INVESTMENT_CATEGORIES.has(t.category)
+      (t) => !fixedCategoryIds.has(t.category_id) && !INVESTMENT_CATEGORIES.has(t.category)
     )
 
     return {
@@ -108,7 +114,7 @@ export default function MonthlyDetailsPage() {
         items: groupByCategory(investmentTxs),
       },
     }
-  }, [transactions, categories])
+  }, [transactions, categories, templates])
 
   const totalExpense = monthlyBreakdown.fixedExpenses.total + monthlyBreakdown.variableExpenses.total
   const balance = monthlyBreakdown.income.total - totalExpense - monthlyBreakdown.investments.total
