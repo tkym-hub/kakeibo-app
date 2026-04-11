@@ -60,6 +60,7 @@ export default function SettingsPage() {
   // 口座編集
   const [editingAccount, setEditingAccount] = useState<Account | null>(null)
   const [editAccountName, setEditAccountName] = useState("")
+  const [editAccountBalance, setEditAccountBalance] = useState("")
 
   // テンプレート追加
   const [newTplName, setNewTplName] = useState("")
@@ -160,7 +161,10 @@ export default function SettingsPage() {
   // 口座名変更
   async function handleRenameAccount() {
     if (!editingAccount || !editAccountName.trim()) return
-    const { error } = await supabase.from("accounts").update({ name: editAccountName.trim() }).eq("id", editingAccount.id)
+    const { error } = await supabase.from("accounts").update({
+      name: editAccountName.trim(),
+      opening_balance: parseInt(editAccountBalance) || 0,
+    }).eq("id", editingAccount.id)
     if (error) { alert("変更に失敗しました"); return }
     setEditingAccount(null)
     loadData()
@@ -423,7 +427,7 @@ export default function SettingsPage() {
                         </div>
                         <div className="flex items-center gap-1">
                           <button
-                            onClick={() => { setEditingAccount(account); setEditAccountName(account.name) }}
+                            onClick={() => { setEditingAccount(account); setEditAccountName(account.name); setEditAccountBalance(String(account.opening_balance ?? 0)) }}
                             className="p-2 text-muted-foreground hover:text-foreground transition-colors"
                           >
                             <Pencil className="h-4 w-4" />
@@ -550,12 +554,14 @@ export default function SettingsPage() {
         </DialogContent>
       </Dialog>
 
-      {/* 口座名変更 Dialog */}
+      {/* 口座編集 Dialog */}
       <Dialog open={!!editingAccount} onOpenChange={(o) => { if (!o) setEditingAccount(null) }}>
         <DialogContent className="rounded-2xl max-w-sm">
-          <DialogHeader><DialogTitle>口座名を変更</DialogTitle></DialogHeader>
+          <DialogHeader><DialogTitle>口座を編集</DialogTitle></DialogHeader>
           <div className="space-y-4 pt-4">
-            <Input value={editAccountName} onChange={(e) => setEditAccountName(e.target.value)} className="rounded-xl" />
+            <Input value={editAccountName} onChange={(e) => setEditAccountName(e.target.value)} className="rounded-xl" placeholder="口座名" />
+            <Input type="number" value={editAccountBalance} onChange={(e) => setEditAccountBalance(e.target.value)} className="rounded-xl" placeholder="初期残高" />
+            <p className="text-xs text-muted-foreground">初期残高を変更すると現在の残高も変わります</p>
             <Button onClick={handleRenameAccount} disabled={!editAccountName.trim()} className="w-full rounded-xl">保存する</Button>
           </div>
         </DialogContent>
