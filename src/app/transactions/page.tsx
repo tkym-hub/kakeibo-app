@@ -129,18 +129,21 @@ export default function TransactionsPage() {
         {/* Header */}
         <header className="mb-10">
           <p className="text-xs tracking-widest uppercase text-muted-foreground mb-2">History</p>
-          <div className="flex items-end justify-between">
-            <h1 className="text-2xl font-medium tracking-tight text-foreground md:text-3xl">
-              {currentMonth}
-            </h1>
-            <div className="flex items-center gap-2">
+          <div className="flex items-center justify-between">
+            <MonthSelector
+              month={currentMonth}
+              onPrevious={() => setCurrentMonth(shiftMonth(currentMonth, -1))}
+              onNext={() => setCurrentMonth(shiftMonth(currentMonth, 1))}
+              size="lg"
+            />
+            <div className="flex items-center gap-1">
               <button
                 onClick={() => setSortOrder((o) => o === "desc" ? "asc" : "desc")}
                 className="flex h-8 items-center gap-1.5 rounded-full px-3 text-xs text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
                 aria-label="並び替え"
               >
                 <ArrowUpDown className="h-3.5 w-3.5" />
-                {sortOrder === "desc" ? "新しい順" : "古い順"}
+                <span className="hidden md:inline">{sortOrder === "desc" ? "新しい順" : "古い順"}</span>
               </button>
               <button
                 onClick={() => setShowFilters(!showFilters)}
@@ -153,13 +156,8 @@ export default function TransactionsPage() {
                 aria-label="絞り込み"
               >
                 <SlidersHorizontal className="h-3.5 w-3.5" />
-                絞り込み
+                <span className="hidden md:inline">絞り込み</span>
               </button>
-              <MonthSelector
-                month={currentMonth}
-                onPrevious={() => setCurrentMonth(shiftMonth(currentMonth, -1))}
-                onNext={() => setCurrentMonth(shiftMonth(currentMonth, 1))}
-              />
             </div>
           </div>
         </header>
