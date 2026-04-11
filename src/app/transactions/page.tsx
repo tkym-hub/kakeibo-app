@@ -7,7 +7,7 @@ import { getTransactions, getCategories, getAccounts, formatCurrency, formatDate
 import { Transaction, Category, Account, TransactionType } from "@/lib/types"
 import { supabase } from "@/lib/supabase"
 import { cn } from "@/lib/utils"
-import { SlidersHorizontal, X, Pencil, Trash2, Calendar } from "lucide-react"
+import { SlidersHorizontal, X, Pencil, Trash2, Calendar, ArrowUpDown } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
@@ -29,6 +29,7 @@ import {
 export default function TransactionsPage() {
   const [currentMonth, setCurrentMonth] = useState(getCurrentMonth())
   const [showFilters, setShowFilters] = useState(false)
+  const [sortOrder, setSortOrder] = useState<"desc" | "asc">("desc")
   const [categoryFilter, setCategoryFilter] = useState<string>("all")
   const [accountFilter, setAccountFilter] = useState<string>("all")
   const [typeFilter, setTypeFilter] = useState<string>("all")
@@ -106,10 +107,13 @@ export default function TransactionsPage() {
     return true
   }), [transactions, categoryFilter, accountFilter, typeFilter])
 
-  const groupedTransactions = useMemo(
-    () => groupTransactionsByDate(filteredTransactions),
-    [filteredTransactions]
-  )
+  const groupedTransactions = useMemo(() => {
+    const grouped = groupTransactionsByDate(filteredTransactions)
+    if (sortOrder === "asc") {
+      return new Map([...grouped.entries()].reverse())
+    }
+    return grouped
+  }, [filteredTransactions, sortOrder])
 
   const hasActiveFilters = categoryFilter !== "all" || accountFilter !== "all" || typeFilter !== "all"
 
@@ -131,16 +135,25 @@ export default function TransactionsPage() {
             </h1>
             <div className="flex items-center gap-2">
               <button
+                onClick={() => setSortOrder((o) => o === "desc" ? "asc" : "desc")}
+                className="flex h-8 items-center gap-1.5 rounded-full px-3 text-xs text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
+                aria-label="並び替え"
+              >
+                <ArrowUpDown className="h-3.5 w-3.5" />
+                {sortOrder === "desc" ? "新しい順" : "古い順"}
+              </button>
+              <button
                 onClick={() => setShowFilters(!showFilters)}
                 className={cn(
-                  "flex h-8 w-8 items-center justify-center rounded-full transition-colors",
+                  "flex h-8 items-center gap-1.5 rounded-full px-3 text-xs transition-colors",
                   showFilters || hasActiveFilters
                     ? "bg-foreground text-background"
                     : "text-muted-foreground hover:text-foreground hover:bg-muted"
                 )}
-                aria-label="フィルタ"
+                aria-label="絞り込み"
               >
-                <SlidersHorizontal className="h-4 w-4" />
+                <SlidersHorizontal className="h-3.5 w-3.5" />
+                絞り込み
               </button>
               <MonthSelector
                 month={currentMonth}
@@ -166,38 +179,47 @@ export default function TransactionsPage() {
               )}
             </div>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-              <Select value={typeFilter} onValueChange={setTypeFilter}>
-                <SelectTrigger className="rounded-xl border-0 bg-muted/50">
-                  <SelectValue placeholder="種類" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">すべて</SelectItem>
-                  <SelectItem value="income">収入</SelectItem>
-                  <SelectItem value="expense">支出</SelectItem>
-                </SelectContent>
-              </Select>
-              <Select value={categoryFilter} onValueChange={setCategoryFilter}>
-                <SelectTrigger className="rounded-xl border-0 bg-muted/50">
-                  <SelectValue placeholder="カテゴリ" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">すべて</SelectItem>
-                  {categories.map((c) => (
-                    <SelectItem key={c.id} value={c.id}>{c.icon} {c.name}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-              <Select value={accountFilter} onValueChange={setAccountFilter}>
-                <SelectTrigger className="rounded-xl border-0 bg-muted/50">
-                  <SelectValue placeholder="口座" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">すべて</SelectItem>
-                  {accounts.map((a) => (
-                    <SelectItem key={a.id} value={a.id}>{a.icon} {a.name}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              <div className="space-y-1.5">
+                <p className="text-[10px] tracking-wide uppercase text-muted-foreground px-1">種類</p>
+                <Select value={typeFilter} onValueChange={setTypeFilter}>
+                  <SelectTrigger className="rounded-xl border-0 bg-muted/50">
+                    <SelectValue placeholder="すべて" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">すべて</SelectItem>
+                    <SelectItem value="income">収入</SelectItem>
+                    <SelectItem value="expense">支出</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-1.5">
+                <p className="text-[10px] tracking-wide uppercase text-muted-foreground px-1">カテゴリ</p>
+                <Select value={categoryFilter} onValueChange={setCategoryFilter}>
+                  <SelectTrigger className="rounded-xl border-0 bg-muted/50">
+                    <SelectValue placeholder="すべて" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">すべて</SelectItem>
+                    {categories.map((c) => (
+                      <SelectItem key={c.id} value={c.id}>{c.icon} {c.name}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-1.5">
+                <p className="text-[10px] tracking-wide uppercase text-muted-foreground px-1">口座</p>
+                <Select value={accountFilter} onValueChange={setAccountFilter}>
+                  <SelectTrigger className="rounded-xl border-0 bg-muted/50">
+                    <SelectValue placeholder="すべて" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">すべて</SelectItem>
+                    {accounts.map((a) => (
+                      <SelectItem key={a.id} value={a.id}>{a.icon} {a.name}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
             </div>
           </div>
         )}
