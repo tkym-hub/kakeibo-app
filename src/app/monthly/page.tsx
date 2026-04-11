@@ -1,6 +1,7 @@
 "use client"
 
 import { useState, useEffect, useMemo } from "react"
+import Link from "next/link"
 import { AppLayout } from "@/components/app-layout"
 import { MonthSelector } from "@/components/month-selector"
 import { formatCurrency, getTransactions, getAccounts, getCategories, getCurrentMonth, shiftMonth } from "@/lib/data"
@@ -201,7 +202,9 @@ export default function MonthlyDetailsPage() {
                 口座残高
               </p>
               {accounts.length === 0 ? (
-                <p className="text-sm text-muted-foreground">口座が登録されていません</p>
+                <p className="text-sm text-muted-foreground">
+                  口座が登録されていません。<Link href="/settings?tab=accounts" className="underline underline-offset-2 hover:text-foreground transition-colors">設定画面で追加</Link>してください。
+                </p>
               ) : (
                 <div className="rounded-2xl bg-card divide-y divide-border/50">
                   {accounts.map((account) => (

@@ -42,12 +42,14 @@ export default function SettingsPage() {
 
   // カテゴリ追加
   const [newCategoryName, setNewCategoryName] = useState("")
+  const [newCategoryIcon, setNewCategoryIcon] = useState("")
   const [newCategoryType, setNewCategoryType] = useState<"income" | "expense">("expense")
   const [addCategoryOpen, setAddCategoryOpen] = useState(false)
 
   // カテゴリ編集
   const [editingCategory, setEditingCategory] = useState<Category | null>(null)
   const [editCategoryName, setEditCategoryName] = useState("")
+  const [editCategoryIcon, setEditCategoryIcon] = useState("")
 
   // 口座追加
   const [newAccountName, setNewAccountName] = useState("")
@@ -103,6 +105,7 @@ export default function SettingsPage() {
     const { error } = await supabase.from("categories").insert({
       user_id: user.id,
       name: newCategoryName.trim(),
+      icon: newCategoryIcon.trim() || null,
       type: newCategoryType,
       sort_order: 99,
       is_fixed: false,
@@ -110,6 +113,7 @@ export default function SettingsPage() {
     })
     if (error) { alert("追加に失敗しました"); return }
     setNewCategoryName("")
+    setNewCategoryIcon("")
     setAddCategoryOpen(false)
     loadData()
   }
@@ -117,7 +121,10 @@ export default function SettingsPage() {
   // カテゴリ名変更
   async function handleRenameCategory() {
     if (!editingCategory || !editCategoryName.trim()) return
-    const { error } = await supabase.from("categories").update({ name: editCategoryName.trim() }).eq("id", editingCategory.id)
+    const { error } = await supabase.from("categories").update({
+      name: editCategoryName.trim(),
+      icon: editCategoryIcon.trim() || null,
+    }).eq("id", editingCategory.id)
     if (error) { alert("変更に失敗しました"); return }
     setEditingCategory(null)
     loadData()
@@ -260,7 +267,7 @@ export default function SettingsPage() {
             </div>
             <div className="flex items-center gap-1">
               <button
-                onClick={() => { setEditingCategory(category); setEditCategoryName(category.name) }}
+                onClick={() => { setEditingCategory(category); setEditCategoryName(category.name); setEditCategoryIcon(category.icon) }}
                 className="p-2 text-muted-foreground hover:text-foreground transition-colors"
               >
                 <Pencil className="h-4 w-4" />
@@ -333,8 +340,12 @@ export default function SettingsPage() {
                       <DialogContent className="rounded-2xl">
                         <DialogHeader><DialogTitle>収入カテゴリを追加</DialogTitle></DialogHeader>
                         <div className="space-y-4 pt-4">
-                          <Input placeholder="カテゴリ名" value={newCategoryName} onChange={(e) => setNewCategoryName(e.target.value)} className="rounded-xl" />
-                          <Button onClick={handleAddCategory} className="w-full rounded-xl">追加する</Button>
+                          <div className="flex gap-2">
+                            <Input placeholder="絵文字" value={newCategoryIcon} onChange={(e) => setNewCategoryIcon(e.target.value)} className="rounded-xl w-20 text-center text-lg" maxLength={8} />
+                            <Input placeholder="カテゴリ名" value={newCategoryName} onChange={(e) => setNewCategoryName(e.target.value)} className="rounded-xl flex-1" />
+                          </div>
+                          <p className="text-xs text-muted-foreground">絵文字は省略可（自動で割り当てます）</p>
+                          <Button onClick={handleAddCategory} disabled={!newCategoryName.trim()} className="w-full rounded-xl">追加する</Button>
                         </div>
                       </DialogContent>
                     </Dialog>
@@ -353,8 +364,12 @@ export default function SettingsPage() {
                       <DialogContent className="rounded-2xl">
                         <DialogHeader><DialogTitle>支出カテゴリを追加</DialogTitle></DialogHeader>
                         <div className="space-y-4 pt-4">
-                          <Input placeholder="カテゴリ名" value={newCategoryName} onChange={(e) => setNewCategoryName(e.target.value)} className="rounded-xl" />
-                          <Button onClick={handleAddCategory} className="w-full rounded-xl">追加する</Button>
+                          <div className="flex gap-2">
+                            <Input placeholder="絵文字" value={newCategoryIcon} onChange={(e) => setNewCategoryIcon(e.target.value)} className="rounded-xl w-20 text-center text-lg" maxLength={8} />
+                            <Input placeholder="カテゴリ名" value={newCategoryName} onChange={(e) => setNewCategoryName(e.target.value)} className="rounded-xl flex-1" />
+                          </div>
+                          <p className="text-xs text-muted-foreground">絵文字は省略可（自動で割り当てます）</p>
+                          <Button onClick={handleAddCategory} disabled={!newCategoryName.trim()} className="w-full rounded-xl">追加する</Button>
                         </div>
                       </DialogContent>
                     </Dialog>
@@ -524,9 +539,12 @@ export default function SettingsPage() {
       {/* カテゴリ名変更 Dialog */}
       <Dialog open={!!editingCategory} onOpenChange={(o) => { if (!o) setEditingCategory(null) }}>
         <DialogContent className="rounded-2xl max-w-sm">
-          <DialogHeader><DialogTitle>カテゴリ名を変更</DialogTitle></DialogHeader>
+          <DialogHeader><DialogTitle>カテゴリを編集</DialogTitle></DialogHeader>
           <div className="space-y-4 pt-4">
-            <Input value={editCategoryName} onChange={(e) => setEditCategoryName(e.target.value)} className="rounded-xl" />
+            <div className="flex gap-2">
+              <Input placeholder="絵文字" value={editCategoryIcon} onChange={(e) => setEditCategoryIcon(e.target.value)} className="rounded-xl w-20 text-center text-lg" maxLength={8} />
+              <Input value={editCategoryName} onChange={(e) => setEditCategoryName(e.target.value)} className="rounded-xl flex-1" />
+            </div>
             <Button onClick={handleRenameCategory} disabled={!editCategoryName.trim()} className="w-full rounded-xl">保存する</Button>
           </div>
         </DialogContent>
