@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react"
 import { useRouter } from "next/navigation"
+import Link from "next/link"
 import { AppLayout } from "@/components/app-layout"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -169,7 +170,7 @@ export default function AddTransactionPage() {
             </p>
             {accounts.length === 0 ? (
               <p className="text-sm text-muted-foreground">
-                口座がありません。設定画面で追加してください。
+                口座がありません。<Link href="/settings?tab=accounts" className="underline underline-offset-2 hover:text-foreground transition-colors">設定画面で追加</Link>してください。
               </p>
             ) : (
               <div className="flex flex-wrap gap-2">

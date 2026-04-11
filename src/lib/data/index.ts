@@ -1,7 +1,7 @@
 import { supabase } from "@/lib/supabase"
 import { Transaction, Category, Account, RecurringTemplate } from "@/lib/types"
 
-// カテゴリアイコン静的マッピング（DBにはiconカラムがないため）
+// カテゴリアイコン静的マッピング（DBにiconが未設定の場合のフォールバック）
 const CATEGORY_ICONS: Record<string, string> = {
   "給与": "💼", "副業": "💻", "投資収入": "📈", "その他収入": "💰",
   "食費": "🍽️", "日用品": "🧴", "交通費": "🚃", "住居費": "🏠",
@@ -40,7 +40,7 @@ export const DEFAULT_CATEGORIES = [
 export async function getCategories(): Promise<Category[]> {
   const { data, error } = await supabase
     .from("categories")
-    .select("id, name, type, is_fixed")
+    .select("id, name, type, is_fixed, icon")
     .eq("is_active", true)
     .order("sort_order")
     .order("name")
@@ -52,7 +52,7 @@ export async function getCategories(): Promise<Category[]> {
     name: row.name,
     type: row.type,
     is_fixed: row.is_fixed,
-    icon: CATEGORY_ICONS[row.name] ?? "📦",
+    icon: row.icon ?? CATEGORY_ICONS[row.name] ?? "📦",
   }))
 }
 
