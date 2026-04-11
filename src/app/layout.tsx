@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from 'next'
 import { Noto_Sans_JP } from 'next/font/google'
 import './globals.css'
+import { ServiceWorkerRegister } from '@/components/service-worker-register'
 
 const notoSansJP = Noto_Sans_JP({
   subsets: ["latin"],
@@ -11,6 +12,12 @@ const notoSansJP = Noto_Sans_JP({
 export const metadata: Metadata = {
   title: '家計簿 | シンプルな家計管理',
   description: 'シンプルで使いやすい家計簿アプリ。収支管理をもっと簡単に。',
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: 'default',
+    title: '家計簿',
+  },
+  manifest: '/manifest.webmanifest',
 }
 
 export const viewport: Viewport = {
@@ -29,6 +36,7 @@ export default function RootLayout({
   return (
     <html lang="ja">
       <body className={`${notoSansJP.variable} font-sans antialiased`}>
+        <ServiceWorkerRegister />
         {children}
       </body>
     </html>
