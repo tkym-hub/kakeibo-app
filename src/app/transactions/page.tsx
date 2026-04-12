@@ -7,7 +7,7 @@ import { getTransactions, getCategories, getAccounts, formatCurrency, formatDate
 import { Transaction, Category, Account, TransactionType } from "@/lib/types"
 import { supabase } from "@/lib/supabase"
 import { cn } from "@/lib/utils"
-import { SlidersHorizontal, X, Pencil, Trash2, Calendar, ArrowUpDown } from "lucide-react"
+import { SlidersHorizontal, X, Pencil, Trash2, Calendar, ArrowUpDown, MoreHorizontal } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
@@ -18,6 +18,12 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
+import {
+  DropdownMenu,
+  DropdownMenuTrigger,
+  DropdownMenuContent,
+  DropdownMenuItem,
+} from "@/components/ui/dropdown-menu"
 import {
   Dialog,
   DialogContent,
@@ -243,7 +249,7 @@ export default function TransactionsPage() {
                     {dayTransactions.map((transaction) => (
                       <div
                         key={transaction.id}
-                        className="flex items-center justify-between px-5 py-4 group"
+                        className="flex items-center justify-between px-5 py-4"
                       >
                         <div className="flex items-center gap-4">
                           <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-muted/50 text-base">
@@ -256,8 +262,12 @@ export default function TransactionsPage() {
                             <p className="text-xs text-muted-foreground mt-0.5">
                               {transaction.name && `${transaction.category} · `}
                               {transaction.account}
-                              {transaction.memo && ` · ${transaction.memo}`}
                             </p>
+                            {transaction.memo && (
+                              <p className="text-xs text-muted-foreground/70 mt-0.5">
+                                {transaction.memo}
+                              </p>
+                            )}
                           </div>
                         </div>
                         <div className="flex items-center gap-2">
@@ -270,20 +280,23 @@ export default function TransactionsPage() {
                             {transaction.type === "income" ? "+" : "-"}
                             {formatCurrency(transaction.amount)}
                           </span>
-                          <div className="flex items-center gap-0.5 opacity-0 group-hover:opacity-100 md:flex transition-opacity">
-                            <button
-                              onClick={() => openEdit(transaction)}
-                              className="p-1.5 text-muted-foreground hover:text-foreground transition-colors rounded-lg hover:bg-muted"
-                            >
-                              <Pencil className="h-3.5 w-3.5" />
-                            </button>
-                            <button
-                              onClick={() => setDeletingTxId(transaction.id)}
-                              className="p-1.5 text-muted-foreground hover:text-destructive transition-colors rounded-lg hover:bg-muted"
-                            >
-                              <Trash2 className="h-3.5 w-3.5" />
-                            </button>
-                          </div>
+                          <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                              <button className="p-1.5 text-muted-foreground hover:text-foreground transition-colors rounded-lg hover:bg-muted">
+                                <MoreHorizontal className="h-4 w-4" />
+                              </button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="end">
+                              <DropdownMenuItem onClick={() => openEdit(transaction)}>
+                                <Pencil className="h-3.5 w-3.5" />
+                                編集
+                              </DropdownMenuItem>
+                              <DropdownMenuItem destructive onClick={() => setDeletingTxId(transaction.id)}>
+                                <Trash2 className="h-3.5 w-3.5" />
+                                削除
+                              </DropdownMenuItem>
+                            </DropdownMenuContent>
+                          </DropdownMenu>
                         </div>
                       </div>
                     ))}
