@@ -94,7 +94,7 @@ export async function getTransactions(month?: string): Promise<Transaction[]> {
   let query = supabase
     .from("transactions")
     .select(`
-      id, type, amount, txn_date, memo,
+      id, type, amount, txn_date, name, memo,
       category_id, categories(name),
       account_id, accounts(name)
     `)
@@ -128,6 +128,7 @@ export async function getTransactions(month?: string): Promise<Transaction[]> {
       account_id: row.account_id,
       account: accountName,
       date: row.txn_date,
+      name: row.name ?? undefined,
       memo: row.memo ?? undefined,
       icon: CATEGORY_ICONS[categoryName] ?? "📦",
     }

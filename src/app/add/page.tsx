@@ -20,6 +20,7 @@ export default function AddTransactionPage() {
   const [selectedCategory, setSelectedCategory] = useState<string>("")
   const [selectedAccount, setSelectedAccount] = useState<string>("")
   const [date, setDate] = useState(new Date().toISOString().split("T")[0])
+  const [name, setName] = useState("")
   const [memo, setMemo] = useState("")
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -60,6 +61,7 @@ export default function AddTransactionPage() {
       category_id: selectedCategory,
       account_id: selectedAccount,
       txn_date: date,
+      name: name || null,
       memo: memo || null,
     })
 
@@ -72,6 +74,7 @@ export default function AddTransactionPage() {
     // フォームリセット
     setAmount("")
     setSelectedCategory("")
+    setName("")
     setMemo("")
     setDate(new Date().toISOString().split("T")[0])
     router.push("/")
@@ -191,6 +194,20 @@ export default function AddTransactionPage() {
                 ))}
               </div>
             )}
+          </div>
+
+          {/* Name */}
+          <div>
+            <p className="text-xs tracking-wide uppercase text-muted-foreground mb-4">
+              品目名
+            </p>
+            <Input
+              type="text"
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              placeholder="例：ランチ、スーパー"
+              className="h-12 rounded-xl bg-muted/30 border-0 text-foreground placeholder:text-muted-foreground/50"
+            />
           </div>
 
           {/* Date */}

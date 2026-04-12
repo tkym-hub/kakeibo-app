@@ -9,6 +9,7 @@ export interface Transaction {
   account_id: string
   account: string     // 口座名（表示用、JOIN済み）
   date: string        // YYYY-MM-DD（txn_dateのエイリアス）
+  name?: string       // 品目名（任意）
   memo?: string
   icon?: string       // カテゴリアイコン（静的マッピング）
 }

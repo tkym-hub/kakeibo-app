@@ -46,8 +46,12 @@ export default function TransactionsPage() {
   const [editCategoryId, setEditCategoryId] = useState("")
   const [editAccountId, setEditAccountId] = useState("")
   const [editDate, setEditDate] = useState("")
+  const [editName, setEditName] = useState("")
   const [editMemo, setEditMemo] = useState("")
   const [saving, setSaving] = useState(false)
+
+  // 削除確認用
+  const [deletingTxId, setDeletingTxId] = useState<string | null>(null)
 
   async function loadTransactions() {
     const txs = await getTransactions(currentMonth)
@@ -74,6 +78,7 @@ export default function TransactionsPage() {
     setEditCategoryId(tx.category_id)
     setEditAccountId(tx.account_id)
     setEditDate(tx.date)
+    setEditName(tx.name ?? "")
     setEditMemo(tx.memo ?? "")
   }
 
@@ -86,6 +91,7 @@ export default function TransactionsPage() {
       category_id: editCategoryId,
       account_id: editAccountId,
       txn_date: editDate,
+      name: editName || null,
       memo: editMemo || null,
     }).eq("id", editingTx.id)
     setSaving(false)
@@ -97,6 +103,7 @@ export default function TransactionsPage() {
   async function handleDelete(id: string) {
     const { error } = await supabase.from("transactions").delete().eq("id", id)
     if (error) { alert("削除に失敗しました"); return }
+    setDeletingTxId(null)
     setTransactions((prev) => prev.filter((t) => t.id !== id))
   }
 
@@ -244,9 +251,10 @@ export default function TransactionsPage() {
                           </div>
                           <div>
                             <p className="text-sm font-medium text-foreground">
-                              {transaction.category}
+                              {transaction.name || transaction.category}
                             </p>
                             <p className="text-xs text-muted-foreground mt-0.5">
+                              {transaction.name && `${transaction.category} · `}
                               {transaction.account}
                               {transaction.memo && ` · ${transaction.memo}`}
                             </p>
@@ -270,7 +278,7 @@ export default function TransactionsPage() {
                               <Pencil className="h-3.5 w-3.5" />
                             </button>
                             <button
-                              onClick={() => handleDelete(transaction.id)}
+                              onClick={() => setDeletingTxId(transaction.id)}
                               className="p-1.5 text-muted-foreground hover:text-destructive transition-colors rounded-lg hover:bg-muted"
                             >
                               <Trash2 className="h-3.5 w-3.5" />
@@ -292,6 +300,34 @@ export default function TransactionsPage() {
           </>
         )}
       </div>
+
+      {/* Delete Confirm Dialog */}
+      <Dialog open={!!deletingTxId} onOpenChange={(open) => { if (!open) setDeletingTxId(null) }}>
+        <DialogContent className="rounded-2xl max-w-sm">
+          <DialogHeader>
+            <DialogTitle>明細を削除</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-5 pt-2">
+            <p className="text-sm text-muted-foreground">この明細を削除します。元に戻せません。</p>
+            <div className="flex gap-3">
+              <Button
+                variant="outline"
+                className="flex-1 rounded-xl"
+                onClick={() => setDeletingTxId(null)}
+              >
+                キャンセル
+              </Button>
+              <Button
+                variant="destructive"
+                className="flex-1 rounded-xl"
+                onClick={() => deletingTxId && handleDelete(deletingTxId)}
+              >
+                削除する
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
 
       {/* Edit Dialog */}
       <Dialog open={!!editingTx} onOpenChange={(open) => { if (!open) setEditingTx(null) }}>
@@ -315,6 +351,18 @@ export default function TransactionsPage() {
                   {t === "expense" ? "支出" : "収入"}
                 </button>
               ))}
+            </div>
+
+            {/* Name */}
+            <div>
+              <p className="text-xs tracking-wide uppercase text-muted-foreground mb-2">品目名</p>
+              <Input
+                type="text"
+                value={editName}
+                onChange={(e) => setEditName(e.target.value)}
+                placeholder="例：ランチ、スーパー"
+                className="rounded-xl bg-muted/50 border-0"
+              />
             </div>
 
             {/* Amount */}
