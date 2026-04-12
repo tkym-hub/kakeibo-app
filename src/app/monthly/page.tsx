@@ -127,14 +127,12 @@ export default function MonthlyDetailsPage() {
           <p className="text-xs tracking-widest uppercase text-muted-foreground mb-2">
             Monthly Report
           </p>
-          <div className="flex items-end justify-between">
-            <h1 className="text-2xl font-medium tracking-tight text-foreground md:text-3xl">
-              {currentMonth}
-            </h1>
+          <div className="flex items-center justify-between">
             <MonthSelector
               month={currentMonth}
               onPrevious={() => setCurrentMonth(shiftMonth(currentMonth, -1))}
               onNext={() => setCurrentMonth(shiftMonth(currentMonth, 1))}
+              size="lg"
             />
           </div>
         </header>
