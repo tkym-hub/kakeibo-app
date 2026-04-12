@@ -17,8 +17,8 @@ export function BottomNav() {
   const pathname = usePathname()
 
   return (
-    <nav className="fixed bottom-0 left-0 right-0 z-50 bg-card/80 backdrop-blur-xl border-t border-border/50 md:hidden">
-      <div className="flex items-center justify-around px-2 py-2 pb-[calc(0.5rem+env(safe-area-inset-bottom))]">
+    <nav className="fixed bottom-0 left-0 right-0 z-50 bg-card/90 backdrop-blur-xl border-t border-border/50 md:hidden">
+      <div className="flex items-center justify-around px-1 pt-2 pb-[calc(0.75rem+env(safe-area-inset-bottom))]">
         {navItems.map((item) => {
           const isActive = pathname === item.href
           const Icon = item.icon
@@ -28,10 +28,10 @@ export function BottomNav() {
               <Link
                 key={item.href}
                 href={item.href}
-                className="flex flex-col items-center -mt-5"
+                className="flex flex-col items-center -mt-6"
               >
-                <div className="flex h-12 w-12 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-lg shadow-primary/20">
-                  <Icon className="h-5 w-5" strokeWidth={2} />
+                <div className="flex h-14 w-14 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-lg shadow-primary/25">
+                  <Icon className="h-6 w-6" strokeWidth={2} />
                 </div>
               </Link>
             )
@@ -42,12 +42,14 @@ export function BottomNav() {
               key={item.href}
               href={item.href}
               className={cn(
-                "flex flex-col items-center justify-center py-2 px-4 transition-colors",
-                isActive ? "text-foreground" : "text-muted-foreground"
+                "flex flex-col items-center justify-center gap-1 min-w-[56px] min-h-[52px] px-3 py-1.5 rounded-2xl transition-colors",
+                isActive
+                  ? "text-primary bg-primary/10"
+                  : "text-muted-foreground hover:text-foreground"
               )}
             >
               <Icon className="h-5 w-5" strokeWidth={isActive ? 2 : 1.5} />
-              <span className="mt-1 text-[10px] tracking-wide">{item.label}</span>
+              <span className="text-[10px] tracking-wide font-medium">{item.label}</span>
             </Link>
           )
         })}
