@@ -62,6 +62,15 @@ export default function SettingsPage() {
   const [editAccountName, setEditAccountName] = useState("")
   const [editAccountBalance, setEditAccountBalance] = useState("")
 
+  // テンプレート編集
+  const [editingTemplate, setEditingTemplate] = useState<RecurringTemplate | null>(null)
+  const [editTplName, setEditTplName] = useState("")
+  const [editTplAmount, setEditTplAmount] = useState("")
+  const [editTplType, setEditTplType] = useState<TransactionType>("expense")
+  const [editTplCategoryId, setEditTplCategoryId] = useState("")
+  const [editTplAccountId, setEditTplAccountId] = useState("")
+  const [editTplDay, setEditTplDay] = useState("")
+
   // テンプレート追加
   const [newTplName, setNewTplName] = useState("")
   const [newTplAmount, setNewTplAmount] = useState("")
@@ -195,6 +204,21 @@ export default function SettingsPage() {
     if (error) { alert("追加に失敗しました"); return }
     setNewTplName(""); setNewTplAmount(""); setNewTplCategoryId(""); setNewTplAccountId(""); setNewTplDay("")
     setAddTplOpen(false)
+    loadData()
+  }
+
+  async function handleUpdateTemplate() {
+    if (!editingTemplate || !editTplName.trim() || !editTplAmount || !editTplCategoryId || !editTplAccountId || !editTplDay) return
+    const { error } = await supabase.from("recurring_templates").update({
+      name: editTplName.trim(),
+      amount: parseInt(editTplAmount),
+      type: editTplType,
+      category_id: editTplCategoryId,
+      account_id: editTplAccountId,
+      day_of_month: parseInt(editTplDay),
+    }).eq("id", editingTemplate.id)
+    if (error) { alert("更新に失敗しました"); return }
+    setEditingTemplate(null)
     loadData()
   }
 
@@ -509,10 +533,24 @@ export default function SettingsPage() {
                               {tpl.icon} {tpl.category} · {tpl.account} · 毎月{tpl.day_of_month}日
                             </p>
                           </div>
-                          <div className="flex items-center gap-3">
-                            <span className="text-sm tabular-nums text-foreground">
+                          <div className="flex items-center gap-1">
+                            <span className="text-sm tabular-nums text-foreground mr-2">
                               {formatCurrency(tpl.amount)}
                             </span>
+                            <button
+                              onClick={() => {
+                                setEditingTemplate(tpl)
+                                setEditTplName(tpl.name)
+                                setEditTplAmount(String(tpl.amount))
+                                setEditTplType(tpl.type)
+                                setEditTplCategoryId(tpl.category_id)
+                                setEditTplAccountId(tpl.account_id)
+                                setEditTplDay(String(tpl.day_of_month))
+                              }}
+                              className="p-2 text-muted-foreground hover:text-foreground transition-colors"
+                            >
+                              <Pencil className="h-4 w-4" />
+                            </button>
                             <button
                               onClick={() => handleDeleteTemplate(tpl.id)}
                               className="p-2 text-muted-foreground hover:text-destructive transition-colors"
@@ -563,6 +601,44 @@ export default function SettingsPage() {
             <Input type="number" value={editAccountBalance} onChange={(e) => setEditAccountBalance(e.target.value)} className="rounded-xl" placeholder="初期残高" />
             <p className="text-xs text-muted-foreground">初期残高を変更すると現在の残高も変わります</p>
             <Button onClick={handleRenameAccount} disabled={!editAccountName.trim()} className="w-full rounded-xl">保存する</Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* テンプレート編集 Dialog */}
+      <Dialog open={!!editingTemplate} onOpenChange={(o) => { if (!o) setEditingTemplate(null) }}>
+        <DialogContent className="rounded-2xl max-w-sm">
+          <DialogHeader><DialogTitle>固定費を編集</DialogTitle></DialogHeader>
+          <div className="space-y-4 pt-4">
+            <Input placeholder="名称" value={editTplName} onChange={(e) => setEditTplName(e.target.value)} className="rounded-xl" />
+            <Input type="number" placeholder="金額" value={editTplAmount} onChange={(e) => setEditTplAmount(e.target.value)} className="rounded-xl" />
+            <div className="flex rounded-full bg-muted p-1">
+              {(["expense", "income"] as TransactionType[]).map((t) => (
+                <button key={t} onClick={() => { setEditTplType(t); setEditTplCategoryId("") }}
+                  className={cn("flex-1 py-1.5 rounded-full text-sm transition-all", editTplType === t ? "bg-card text-foreground shadow-sm" : "text-muted-foreground")}
+                >
+                  {t === "expense" ? "支出" : "収入"}
+                </button>
+              ))}
+            </div>
+            <Select value={editTplCategoryId} onValueChange={setEditTplCategoryId}>
+              <SelectTrigger className="rounded-xl"><SelectValue placeholder="カテゴリ" /></SelectTrigger>
+              <SelectContent>
+                {categories.filter((c) => c.type === editTplType).map((c) => (
+                  <SelectItem key={c.id} value={c.id}>{c.icon} {c.name}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <Select value={editTplAccountId} onValueChange={setEditTplAccountId}>
+              <SelectTrigger className="rounded-xl"><SelectValue placeholder="口座" /></SelectTrigger>
+              <SelectContent>
+                {accounts.map((a) => (
+                  <SelectItem key={a.id} value={a.id}>{a.icon} {a.name}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <Input type="number" placeholder="引落日（1〜31）" min="1" max="31" value={editTplDay} onChange={(e) => setEditTplDay(e.target.value)} className="rounded-xl" />
+            <Button onClick={handleUpdateTemplate} disabled={!editTplName.trim() || !editTplAmount || !editTplCategoryId || !editTplAccountId || !editTplDay} className="w-full rounded-xl">保存する</Button>
           </div>
         </DialogContent>
       </Dialog>
