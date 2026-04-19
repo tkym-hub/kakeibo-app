@@ -19,6 +19,7 @@ export default function AddTransactionPage() {
   const [amount, setAmount] = useState("")
   const [selectedCategory, setSelectedCategory] = useState<string>("")
   const [selectedAccount, setSelectedAccount] = useState<string>("")
+  const [toAccount, setToAccount] = useState<string>("")
   const [date, setDate] = useState(new Date().toISOString().split("T")[0])
   const [name, setName] = useState("")
   const [memo, setMemo] = useState("")
@@ -38,6 +39,12 @@ export default function AddTransactionPage() {
 
   const filteredCategories = categories.filter((c) => c.type === type)
 
+  const handleTypeChange = (newType: TransactionType) => {
+    setType(newType)
+    setSelectedCategory("")
+    setToAccount("")
+  }
+
   const handleAmountChange = (value: string) => {
     setAmount(value.replace(/[^0-9]/g, ""))
   }
@@ -46,34 +53,78 @@ export default function AddTransactionPage() {
     ? new Intl.NumberFormat("ja-JP").format(parseInt(amount))
     : ""
 
+  const isTransfer = type === "transfer"
+
+  const isSubmitDisabled =
+    saving ||
+    !amount ||
+    amount === "0" ||
+    (!isTransfer && !selectedCategory) ||
+    !selectedAccount ||
+    (isTransfer && !toAccount)
+
   const handleSubmit = async () => {
-    if (!amount || amount === "0" || !selectedCategory || !selectedAccount) return
+    if (isSubmitDisabled) return
     setSaving(true)
     setError(null)
 
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) { setError("ログインが必要です"); setSaving(false); return }
 
-    const { error: insertError } = await supabase.from("transactions").insert({
-      user_id: user.id,
-      type,
-      amount: parseInt(amount),
-      category_id: selectedCategory,
-      account_id: selectedAccount,
-      txn_date: date,
-      name: name || null,
-      memo: memo || null,
-    })
+    if (isTransfer) {
+      const pairId = crypto.randomUUID()
+      const { error: insertError } = await supabase.from("transactions").insert([
+        {
+          user_id: user.id,
+          type: "expense",
+          amount: parseInt(amount),
+          category_id: null,
+          account_id: selectedAccount,
+          txn_date: date,
+          name: name || null,
+          memo: memo || null,
+          transfer_pair_id: pairId,
+        },
+        {
+          user_id: user.id,
+          type: "income",
+          amount: parseInt(amount),
+          category_id: null,
+          account_id: toAccount,
+          txn_date: date,
+          name: name || null,
+          memo: memo || null,
+          transfer_pair_id: pairId,
+        },
+      ])
 
-    if (insertError) {
-      setError("保存に失敗しました")
-      setSaving(false)
-      return
+      if (insertError) {
+        setError("保存に失敗しました")
+        setSaving(false)
+        return
+      }
+    } else {
+      const { error: insertError } = await supabase.from("transactions").insert({
+        user_id: user.id,
+        type,
+        amount: parseInt(amount),
+        category_id: selectedCategory,
+        account_id: selectedAccount,
+        txn_date: date,
+        name: name || null,
+        memo: memo || null,
+      })
+
+      if (insertError) {
+        setError("保存に失敗しました")
+        setSaving(false)
+        return
+      }
     }
 
-    // フォームリセット
     setAmount("")
     setSelectedCategory("")
+    setToAccount("")
     setName("")
     setMemo("")
     setDate(new Date().toISOString().split("T")[0])
@@ -115,7 +166,7 @@ export default function AddTransactionPage() {
           {/* Type Toggle */}
           <div className="flex rounded-full bg-muted p-1">
             <button
-              onClick={() => { setType("expense"); setSelectedCategory("") }}
+              onClick={() => handleTypeChange("expense")}
               className={cn(
                 "flex-1 py-2.5 rounded-full text-sm transition-all",
                 type === "expense" ? "bg-card text-foreground shadow-sm" : "text-muted-foreground"
@@ -124,7 +175,7 @@ export default function AddTransactionPage() {
               支出
             </button>
             <button
-              onClick={() => { setType("income"); setSelectedCategory("") }}
+              onClick={() => handleTypeChange("income")}
               className={cn(
                 "flex-1 py-2.5 rounded-full text-sm transition-all",
                 type === "income" ? "bg-card text-foreground shadow-sm" : "text-muted-foreground"
@@ -132,44 +183,55 @@ export default function AddTransactionPage() {
             >
               収入
             </button>
+            <button
+              onClick={() => handleTypeChange("transfer")}
+              className={cn(
+                "flex-1 py-2.5 rounded-full text-sm transition-all",
+                type === "transfer" ? "bg-card text-foreground shadow-sm" : "text-muted-foreground"
+              )}
+            >
+              振替
+            </button>
           </div>
 
-          {/* Category Selection */}
-          <div>
-            <p className="text-xs tracking-wide uppercase text-muted-foreground mb-4">
-              カテゴリ
-            </p>
-            {filteredCategories.length === 0 ? (
-              <p className="text-sm text-muted-foreground">
-                カテゴリがありません。設定画面で追加してください。
+          {/* Category Selection (非表示 when transfer) */}
+          {!isTransfer && (
+            <div>
+              <p className="text-xs tracking-wide uppercase text-muted-foreground mb-4">
+                カテゴリ
               </p>
-            ) : (
-              <div className="grid grid-cols-4 gap-2">
-                {filteredCategories.map((category) => (
-                  <button
-                    key={category.id}
-                    onClick={() => setSelectedCategory(category.id)}
-                    className={cn(
-                      "flex flex-col items-center justify-center p-3 rounded-2xl transition-all",
-                      selectedCategory === category.id
-                        ? "bg-card ring-1 ring-border shadow-sm"
-                        : "hover:bg-muted/50"
-                    )}
-                  >
-                    <span className="text-xl mb-1.5">{category.icon}</span>
-                    <span className="text-[11px] text-muted-foreground truncate w-full text-center">
-                      {category.name}
-                    </span>
-                  </button>
-                ))}
-              </div>
-            )}
-          </div>
+              {filteredCategories.length === 0 ? (
+                <p className="text-sm text-muted-foreground">
+                  カテゴリがありません。設定画面で追加してください。
+                </p>
+              ) : (
+                <div className="grid grid-cols-4 gap-2">
+                  {filteredCategories.map((category) => (
+                    <button
+                      key={category.id}
+                      onClick={() => setSelectedCategory(category.id)}
+                      className={cn(
+                        "flex flex-col items-center justify-center p-3 rounded-2xl transition-all",
+                        selectedCategory === category.id
+                          ? "bg-card ring-1 ring-border shadow-sm"
+                          : "hover:bg-muted/50"
+                      )}
+                    >
+                      <span className="text-xl mb-1.5">{category.icon}</span>
+                      <span className="text-[11px] text-muted-foreground truncate w-full text-center">
+                        {category.name}
+                      </span>
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
 
           {/* Account Selection */}
           <div>
             <p className="text-xs tracking-wide uppercase text-muted-foreground mb-4">
-              口座
+              {isTransfer ? "送金元口座" : "口座"}
             </p>
             {accounts.length === 0 ? (
               <p className="text-sm text-muted-foreground">
@@ -195,6 +257,40 @@ export default function AddTransactionPage() {
               </div>
             )}
           </div>
+
+          {/* To Account Selection (transfer のみ) */}
+          {isTransfer && (
+            <div>
+              <p className="text-xs tracking-wide uppercase text-muted-foreground mb-4">
+                振込先口座
+              </p>
+              {accounts.length <= 1 ? (
+                <p className="text-sm text-muted-foreground">
+                  振替には2つ以上の口座が必要です。<Link href="/settings?tab=accounts" className="underline underline-offset-2 hover:text-foreground transition-colors">設定画面で追加</Link>してください。
+                </p>
+              ) : (
+                <div className="flex flex-wrap gap-2">
+                  {accounts
+                    .filter((account) => account.id !== selectedAccount)
+                    .map((account) => (
+                      <button
+                        key={account.id}
+                        onClick={() => setToAccount(account.id)}
+                        className={cn(
+                          "flex items-center gap-2 px-4 py-2.5 rounded-full text-sm transition-all",
+                          toAccount === account.id
+                            ? "bg-card ring-1 ring-border shadow-sm text-foreground"
+                            : "text-muted-foreground hover:bg-muted/50"
+                        )}
+                      >
+                        <span className="text-base">{account.icon}</span>
+                        {account.name}
+                      </button>
+                    ))}
+                </div>
+              )}
+            </div>
+          )}
 
           {/* Name */}
           <div>
@@ -244,7 +340,7 @@ export default function AddTransactionPage() {
           {/* Submit Button */}
           <Button
             onClick={handleSubmit}
-            disabled={saving || !amount || amount === "0" || !selectedCategory || !selectedAccount}
+            disabled={isSubmitDisabled}
             className="w-full h-14 rounded-full text-base"
           >
             {saving ? "保存中..." : "保存する"}
