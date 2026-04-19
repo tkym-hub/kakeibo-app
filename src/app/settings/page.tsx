@@ -208,14 +208,16 @@ export default function SettingsPage() {
   }
 
   async function handleUpdateTemplate() {
-    if (!editingTemplate || !editTplName.trim() || !editTplAmount || !editTplCategoryId || !editTplAccountId || !editTplDay) return
+    const amount = parseInt(editTplAmount)
+    const day = parseInt(editTplDay)
+    if (!editingTemplate || !editTplName.trim() || isNaN(amount) || !editTplCategoryId || !editTplAccountId || isNaN(day)) return
     const { error } = await supabase.from("recurring_templates").update({
       name: editTplName.trim(),
-      amount: parseInt(editTplAmount),
+      amount,
       type: editTplType,
       category_id: editTplCategoryId,
       account_id: editTplAccountId,
-      day_of_month: parseInt(editTplDay),
+      day_of_month: day,
     }).eq("id", editingTemplate.id)
     if (error) { alert("更新に失敗しました"); return }
     setEditingTemplate(null)
@@ -614,7 +616,7 @@ export default function SettingsPage() {
             <Input type="number" placeholder="金額" value={editTplAmount} onChange={(e) => setEditTplAmount(e.target.value)} className="rounded-xl" />
             <div className="flex rounded-full bg-muted p-1">
               {(["expense", "income"] as TransactionType[]).map((t) => (
-                <button key={t} onClick={() => { setEditTplType(t); setEditTplCategoryId("") }}
+                <button key={t} onClick={() => { setEditTplType(t); setEditTplCategoryId(editingTemplate && t === editingTemplate.type ? editingTemplate.category_id : "") }}
                   className={cn("flex-1 py-1.5 rounded-full text-sm transition-all", editTplType === t ? "bg-card text-foreground shadow-sm" : "text-muted-foreground")}
                 >
                   {t === "expense" ? "支出" : "収入"}
