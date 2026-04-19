@@ -72,13 +72,33 @@ export default function AddTransactionPage() {
     if (!user) { setError("ログインが必要です"); setSaving(false); return }
 
     if (isTransfer) {
+      // 振替カテゴリを取得。なければ自動作成
+      let transferCategoryId: string
+      const { data: existingCat } = await supabase
+        .from("categories")
+        .select("id")
+        .eq("type", "transfer")
+        .eq("user_id", user.id)
+        .single()
+      if (existingCat) {
+        transferCategoryId = existingCat.id
+      } else {
+        const { data: newCat, error: catError } = await supabase
+          .from("categories")
+          .insert({ user_id: user.id, name: "振替", type: "transfer", sort_order: 99 })
+          .select("id")
+          .single()
+        if (catError || !newCat) { setError("保存に失敗しました"); setSaving(false); return }
+        transferCategoryId = newCat.id
+      }
+
       const pairId = crypto.randomUUID()
       const { error: insertError } = await supabase.from("transactions").insert([
         {
           user_id: user.id,
           type: "expense",
           amount: parseInt(amount),
-          category_id: null,
+          category_id: transferCategoryId,
           account_id: selectedAccount,
           txn_date: date,
           name: name || null,
@@ -89,7 +109,7 @@ export default function AddTransactionPage() {
           user_id: user.id,
           type: "income",
           amount: parseInt(amount),
-          category_id: null,
+          category_id: transferCategoryId,
           account_id: toAccount,
           txn_date: date,
           name: name || null,
