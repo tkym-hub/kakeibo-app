@@ -242,7 +242,7 @@ export default function AddTransactionPage() {
                 {accounts.map((account) => (
                   <button
                     key={account.id}
-                    onClick={() => setSelectedAccount(account.id)}
+                    onClick={() => { setSelectedAccount(account.id); if (toAccount === account.id) setToAccount("") }}
                     className={cn(
                       "flex items-center gap-2 px-4 py-2.5 rounded-full text-sm transition-all",
                       selectedAccount === account.id
