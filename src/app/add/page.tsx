@@ -71,84 +71,82 @@ export default function AddTransactionPage() {
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) { setError("ログインが必要です"); setSaving(false); return }
 
-    if (isTransfer) {
-      // 振替カテゴリを取得。なければ自動作成
-      let transferCategoryId: string
-      const { data: existingCat } = await supabase
-        .from("categories")
-        .select("id")
-        .eq("type", "transfer")
-        .eq("user_id", user.id)
-        .single()
-      if (existingCat) {
-        transferCategoryId = existingCat.id
-      } else {
-        const { data: newCat, error: catError } = await supabase
+    try {
+      if (isTransfer) {
+        // 振替カテゴリを取得（.limit(1) で複数件でも安全）。なければ is_active=false で自動作成
+        const { data: existingCats, error: catFetchError } = await supabase
           .from("categories")
-          .insert({ user_id: user.id, name: "振替", type: "transfer", sort_order: 99 })
           .select("id")
-          .single()
-        if (catError || !newCat) { setError("保存に失敗しました"); setSaving(false); return }
-        transferCategoryId = newCat.id
-      }
+          .eq("type", "transfer")
+          .eq("user_id", user.id)
+          .limit(1)
+        if (catFetchError) throw catFetchError
 
-      const pairId = crypto.randomUUID()
-      const { error: insertError } = await supabase.from("transactions").insert([
-        {
+        let transferCategoryId: string
+        if (existingCats && existingCats.length > 0) {
+          transferCategoryId = existingCats[0].id
+        } else {
+          const { data: newCat, error: catError } = await supabase
+            .from("categories")
+            .insert({ user_id: user.id, name: "振替", type: "transfer", sort_order: 99, is_active: false })
+            .select("id")
+            .single()
+          if (catError || !newCat) throw catError
+          transferCategoryId = newCat.id
+        }
+
+        const pairId = crypto.randomUUID()
+        const { error: insertError } = await supabase.from("transactions").insert([
+          {
+            user_id: user.id,
+            type: "expense",
+            amount: parseInt(amount),
+            category_id: transferCategoryId,
+            account_id: selectedAccount,
+            txn_date: date,
+            name: name || null,
+            memo: memo || null,
+            transfer_pair_id: pairId,
+          },
+          {
+            user_id: user.id,
+            type: "income",
+            amount: parseInt(amount),
+            category_id: transferCategoryId,
+            account_id: toAccount,
+            txn_date: date,
+            name: name || null,
+            memo: memo || null,
+            transfer_pair_id: pairId,
+          },
+        ])
+        if (insertError) throw insertError
+      } else {
+        const { error: insertError } = await supabase.from("transactions").insert({
           user_id: user.id,
-          type: "expense",
+          type,
           amount: parseInt(amount),
-          category_id: transferCategoryId,
+          category_id: selectedCategory,
           account_id: selectedAccount,
           txn_date: date,
           name: name || null,
           memo: memo || null,
-          transfer_pair_id: pairId,
-        },
-        {
-          user_id: user.id,
-          type: "income",
-          amount: parseInt(amount),
-          category_id: transferCategoryId,
-          account_id: toAccount,
-          txn_date: date,
-          name: name || null,
-          memo: memo || null,
-          transfer_pair_id: pairId,
-        },
-      ])
-
-      if (insertError) {
-        setError("保存に失敗しました")
-        setSaving(false)
-        return
+        })
+        if (insertError) throw insertError
       }
-    } else {
-      const { error: insertError } = await supabase.from("transactions").insert({
-        user_id: user.id,
-        type,
-        amount: parseInt(amount),
-        category_id: selectedCategory,
-        account_id: selectedAccount,
-        txn_date: date,
-        name: name || null,
-        memo: memo || null,
-      })
 
-      if (insertError) {
-        setError("保存に失敗しました")
-        setSaving(false)
-        return
-      }
+      setAmount("")
+      setSelectedCategory("")
+      setToAccount("")
+      setName("")
+      setMemo("")
+      setDate(new Date().toISOString().split("T")[0])
+      router.push("/")
+    } catch {
+      setError("保存に失敗しました")
+    } finally {
+      setSaving(false)
     }
-
-    setAmount("")
-    setSelectedCategory("")
-    setToAccount("")
-    setName("")
-    setMemo("")
-    setDate(new Date().toISOString().split("T")[0])
-    router.push("/")
   }
 
   return (
@@ -176,7 +174,7 @@ export default function AddTransactionPage() {
                 onChange={(e) => handleAmountChange(e.target.value)}
                 className={cn(
                   "text-5xl md:text-6xl font-light tracking-tight text-center bg-transparent border-none outline-none w-full tabular-nums",
-                  type === "income" ? "text-income" : "text-foreground"
+                  type === "income" ? "text-income" : type === "transfer" ? "text-muted-foreground" : "text-foreground"
                 )}
                 placeholder="0"
               />
