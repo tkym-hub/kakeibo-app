@@ -29,6 +29,7 @@ export interface Account {
   opening_balance: number
   balance: number     // opening_balance + 累積入出金
   icon: string
+  debit_account_id?: string | null
 }
 
 export interface RecurringTemplate {
