@@ -56,7 +56,7 @@ export async function getCategories(): Promise<Category[]> {
   }))
 }
 
-export async function getAccounts(): Promise<Account[]> {
+export async function getAccounts(untilDate?: string): Promise<Account[]> {
   const { data: accountsData, error } = await supabase
     .from("accounts")
     .select("id, name, kind, opening_balance, debit_account_id")
@@ -66,10 +66,10 @@ export async function getAccounts(): Promise<Account[]> {
 
   if (error) throw error
 
-  // 口座ごとの累積入出金を一括取得
-  const { data: txData, error: txError } = await supabase
-    .from("transactions")
-    .select("account_id, type, amount")
+  // 口座ごとの累積入出金を一括取得（untilDate指定時はその日以前のみ）
+  let txQuery = supabase.from("transactions").select("account_id, type, amount")
+  if (untilDate) txQuery = txQuery.lte("txn_date", untilDate)
+  const { data: txData, error: txError } = await txQuery
 
   if (txError) throw txError
 
@@ -97,7 +97,8 @@ export async function getTransactions(month?: string): Promise<Transaction[]> {
     .select(`
       id, type, amount, txn_date, name, memo,
       category_id, categories(name),
-      account_id, accounts(name)
+      account_id, accounts(name),
+      transfer_pair_id
     `)
     .order("txn_date", { ascending: false })
     .order("created_at", { ascending: false })
@@ -132,6 +133,7 @@ export async function getTransactions(month?: string): Promise<Transaction[]> {
       name: row.name ?? undefined,
       memo: row.memo ?? undefined,
       icon: CATEGORY_ICONS[categoryName] ?? "📦",
+      transfer_pair_id: row.transfer_pair_id ?? null,
     }
   })
 }

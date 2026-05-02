@@ -12,6 +12,7 @@ export interface Transaction {
   name?: string       // 品目名（任意）
   memo?: string
   icon?: string       // カテゴリアイコン（静的マッピング）
+  transfer_pair_id?: string | null
 }
 
 export interface Category {

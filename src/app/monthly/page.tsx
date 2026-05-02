@@ -65,11 +65,20 @@ export default function MonthlyDetailsPage() {
   const [loading, setLoading] = useState(true)
   const [debitTransferring, setDebitTransferring] = useState<string | null>(null)
 
+  const untilDate = useMemo(() => {
+    const match = currentMonth.match(/(\d{4})年(\d{1,2})月/)
+    if (!match) return undefined
+    const y = parseInt(match[1]), m = parseInt(match[2])
+    const lastDay = new Date(y, m, 0).getDate()
+    return `${y}-${String(m).padStart(2, "0")}-${String(lastDay).padStart(2, "0")}`
+  }, [currentMonth])
+
   useEffect(() => {
     setLoading(true)
     Promise.all([
       getTransactions(currentMonth),
-      getAccounts(),
+      getAccounts(untilDate),
+
       getCategories(),
       getTemplates(),
     ]).then(([txs, accs, cats, tpls]) => {
@@ -81,7 +90,11 @@ export default function MonthlyDetailsPage() {
   }, [currentMonth])
 
   async function handleDebitTransfer(creditAccount: Account) {
-    if (!creditAccount.debit_account_id || creditAccount.balance >= 0) return
+    if (!creditAccount.debit_account_id) return
+    const amount = transactions
+      .filter((t) => t.account_id === creditAccount.id && t.type === "expense")
+      .reduce((sum, t) => sum + t.amount, 0)
+    if (amount === 0) return
     setDebitTransferring(creditAccount.id)
     try {
       const { data: { user } } = await supabase.auth.getUser()
@@ -107,9 +120,7 @@ export default function MonthlyDetailsPage() {
         if (catError || !newCat) throw catError
         transferCategoryId = newCat.id
       }
-
-      const amount = Math.abs(creditAccount.balance)
-      const today = new Date().toISOString().split("T")[0]
+      const txnDate = untilDate ?? new Date().toISOString().split("T")[0]
       const pairId = crypto.randomUUID()
 
       const { error } = await supabase.from("transactions").insert([
@@ -119,7 +130,7 @@ export default function MonthlyDetailsPage() {
           amount,
           category_id: transferCategoryId,
           account_id: creditAccount.debit_account_id,
-          txn_date: today,
+          txn_date: txnDate,
           memo: `${creditAccount.name} 引き落とし`,
           transfer_pair_id: pairId,
         },
@@ -129,15 +140,19 @@ export default function MonthlyDetailsPage() {
           amount,
           category_id: transferCategoryId,
           account_id: creditAccount.id,
-          txn_date: today,
+          txn_date: txnDate,
           memo: `${creditAccount.name} 引き落とし`,
           transfer_pair_id: pairId,
         },
       ])
       if (error) throw error
 
-      const updated = await getAccounts()
-      setAccounts(updated)
+      const [updatedAccounts, updatedTxs] = await Promise.all([
+        getAccounts(untilDate),
+        getTransactions(currentMonth),
+      ])
+      setAccounts(updatedAccounts)
+      setTransactions(updatedTxs)
     } catch {
       alert("引き落とし処理に失敗しました")
     } finally {
@@ -162,8 +177,8 @@ export default function MonthlyDetailsPage() {
       return Object.entries(grouped).map(([name, amount]) => ({ name, amount }))
     }
 
-    const incomeTxs = transactions.filter((t) => t.type === "income")
-    const expenseTxs = transactions.filter((t) => t.type === "expense")
+    const incomeTxs = transactions.filter((t) => t.type === "income" && !t.transfer_pair_id)
+    const expenseTxs = transactions.filter((t) => t.type === "expense" && !t.transfer_pair_id)
     const investmentTxs = expenseTxs.filter((t) => INVESTMENT_CATEGORIES.has(t.category))
     const fixedTxs = expenseTxs.filter((t) => fixedCategoryIds.has(t.category_id))
     const variableTxs = expenseTxs.filter(
@@ -192,6 +207,23 @@ export default function MonthlyDetailsPage() {
 
   const totalExpense = monthlyBreakdown.fixedExpenses.total + monthlyBreakdown.variableExpenses.total
   const balance = monthlyBreakdown.income.total - totalExpense - monthlyBreakdown.investments.total
+
+  // クレカの未引き落とし額: expense合計 - 振替income合計
+  const monthlyUnpaidByAccount = useMemo(() => {
+    const expense: Record<string, number> = {}
+    const transferIncome: Record<string, number> = {}
+    for (const t of transactions) {
+      if (t.type === "expense" && !t.transfer_pair_id)
+        expense[t.account_id] = (expense[t.account_id] || 0) + t.amount
+      if (t.type === "income" && t.transfer_pair_id)
+        transferIncome[t.account_id] = (transferIncome[t.account_id] || 0) + t.amount
+    }
+    const result: Record<string, number> = {}
+    for (const id of new Set([...Object.keys(expense), ...Object.keys(transferIncome)])) {
+      result[id] = (expense[id] ?? 0) - (transferIncome[id] ?? 0)
+    }
+    return result
+  }, [transactions])
 
   const accountsByKind = useMemo(() => {
     const grouped: Record<string, { accounts: Account[]; total: number }> = {}
@@ -318,7 +350,7 @@ export default function MonthlyDetailsPage() {
                             <span className={cn("text-sm tabular-nums", account.balance < 0 ? "text-expense" : "text-foreground")}>
                               {formatCurrency(account.balance)}
                             </span>
-                            {account.kind === "credit_card" && account.debit_account_id && account.balance < 0 && (
+                            {account.kind === "credit_card" && account.debit_account_id && (monthlyUnpaidByAccount[account.id] ?? 0) > 0 && (
                               <button
                                 onClick={() => handleDebitTransfer(account)}
                                 disabled={debitTransferring === account.id}
