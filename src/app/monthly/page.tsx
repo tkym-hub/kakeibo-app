@@ -8,8 +8,15 @@ import { formatCurrency, getTransactions, getAccounts, getCategories, getTemplat
 import { Transaction, Account, Category, RecurringTemplate } from "@/lib/types"
 import { cn } from "@/lib/utils"
 
-// 投資カテゴリは名前ベースで判定（DBにis_investmentフラグがないため）
 const INVESTMENT_CATEGORIES = new Set(["投資"])
+
+const KIND_LABELS: Record<string, string> = {
+  bank: "銀行",
+  cash: "現金",
+  credit_card: "クレカ",
+  e_money: "電子マネー",
+}
+const KIND_ORDER = ["bank", "cash", "credit_card", "e_money"]
 
 interface SectionProps {
   title: string
@@ -119,6 +126,16 @@ export default function MonthlyDetailsPage() {
   const totalExpense = monthlyBreakdown.fixedExpenses.total + monthlyBreakdown.variableExpenses.total
   const balance = monthlyBreakdown.income.total - totalExpense - monthlyBreakdown.investments.total
 
+  const accountsByKind = useMemo(() => {
+    const grouped: Record<string, { accounts: Account[]; total: number }> = {}
+    for (const acc of accounts) {
+      if (!grouped[acc.kind]) grouped[acc.kind] = { accounts: [], total: 0 }
+      grouped[acc.kind].accounts.push(acc)
+      grouped[acc.kind].total += acc.balance
+    }
+    return KIND_ORDER.filter((k) => grouped[k]).map((k) => ({ kind: k, ...grouped[k] }))
+  }, [accounts])
+
   return (
     <AppLayout>
       <div className="px-5 py-8 md:px-10 md:py-12">
@@ -210,19 +227,31 @@ export default function MonthlyDetailsPage() {
                   口座が登録されていません。<Link href="/settings?tab=accounts" className="underline underline-offset-2 hover:text-foreground transition-colors">設定画面で追加</Link>してください。
                 </p>
               ) : (
-                <div className="rounded-2xl bg-card divide-y divide-border/50">
-                  {accounts.map((account) => (
-                    <div
-                      key={account.id}
-                      className="flex items-center justify-between px-6 py-4"
-                    >
-                      <div className="flex items-center gap-3">
-                        <span className="text-lg">{account.icon}</span>
-                        <span className="text-sm text-foreground">{account.name}</span>
+                <div className="space-y-3">
+                  {accountsByKind.map(({ kind, accounts: kindAccounts, total }) => (
+                    <div key={kind} className="rounded-2xl bg-card overflow-hidden">
+                      <div className="flex items-center justify-between px-6 py-4 border-b border-border/50">
+                        <span className="text-xs tracking-wide uppercase text-muted-foreground">
+                          {KIND_LABELS[kind]}
+                        </span>
+                        <span className="text-base tabular-nums font-light text-foreground">
+                          {formatCurrency(total)}
+                        </span>
                       </div>
-                      <span className="text-sm tabular-nums text-foreground">
-                        {formatCurrency(account.balance)}
-                      </span>
+                      {kindAccounts.map((account) => (
+                        <div
+                          key={account.id}
+                          className="flex items-center justify-between px-6 py-3"
+                        >
+                          <div className="flex items-center gap-3">
+                            <span className="text-base">{account.icon}</span>
+                            <span className="text-sm text-muted-foreground">{account.name}</span>
+                          </div>
+                          <span className="text-sm tabular-nums text-foreground">
+                            {formatCurrency(account.balance)}
+                          </span>
+                        </div>
+                      ))}
                     </div>
                   ))}
                 </div>
