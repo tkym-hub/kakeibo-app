@@ -7,6 +7,7 @@ import { MonthSelector } from "@/components/month-selector"
 import { formatCurrency, getTransactions, getAccounts, getCategories, getTemplates, getCurrentMonth, shiftMonth } from "@/lib/data"
 import { Transaction, Account, Category, RecurringTemplate } from "@/lib/types"
 import { cn } from "@/lib/utils"
+import { supabase } from "@/lib/supabase"
 
 const INVESTMENT_CATEGORIES = new Set(["投資"])
 
@@ -62,6 +63,7 @@ export default function MonthlyDetailsPage() {
   const [categories, setCategories] = useState<Category[]>([])
   const [templates, setTemplates] = useState<RecurringTemplate[]>([])
   const [loading, setLoading] = useState(true)
+  const [debitTransferring, setDebitTransferring] = useState<string | null>(null)
 
   useEffect(() => {
     setLoading(true)
@@ -77,6 +79,71 @@ export default function MonthlyDetailsPage() {
       setTemplates(tpls)
     }).finally(() => setLoading(false))
   }, [currentMonth])
+
+  async function handleDebitTransfer(creditAccount: Account) {
+    if (!creditAccount.debit_account_id || creditAccount.balance >= 0) return
+    setDebitTransferring(creditAccount.id)
+    try {
+      const { data: { user } } = await supabase.auth.getUser()
+      if (!user) return
+
+      const { data: existingCats, error: catFetchError } = await supabase
+        .from("categories")
+        .select("id")
+        .eq("type", "transfer")
+        .eq("user_id", user.id)
+        .limit(1)
+      if (catFetchError) throw catFetchError
+
+      let transferCategoryId: string
+      if (existingCats && existingCats.length > 0) {
+        transferCategoryId = existingCats[0].id
+      } else {
+        const { data: newCat, error: catError } = await supabase
+          .from("categories")
+          .insert({ user_id: user.id, name: "振替", type: "transfer", sort_order: 99, is_active: false })
+          .select("id")
+          .single()
+        if (catError || !newCat) throw catError
+        transferCategoryId = newCat.id
+      }
+
+      const amount = Math.abs(creditAccount.balance)
+      const today = new Date().toISOString().split("T")[0]
+      const pairId = crypto.randomUUID()
+
+      const { error } = await supabase.from("transactions").insert([
+        {
+          user_id: user.id,
+          type: "expense",
+          amount,
+          category_id: transferCategoryId,
+          account_id: creditAccount.debit_account_id,
+          txn_date: today,
+          memo: `${creditAccount.name} 引き落とし`,
+          transfer_pair_id: pairId,
+        },
+        {
+          user_id: user.id,
+          type: "income",
+          amount,
+          category_id: transferCategoryId,
+          account_id: creditAccount.id,
+          txn_date: today,
+          memo: `${creditAccount.name} 引き落とし`,
+          transfer_pair_id: pairId,
+        },
+      ])
+      if (error) throw error
+
+      const updated = await getAccounts()
+      setAccounts(updated)
+    } catch {
+      alert("引き落とし処理に失敗しました")
+    } finally {
+      setDebitTransferring(null)
+    }
+  }
 
   const monthlyBreakdown = useMemo(() => {
     // 固定費カテゴリIDの判定:
@@ -247,9 +314,20 @@ export default function MonthlyDetailsPage() {
                             <span className="text-base">{account.icon}</span>
                             <span className="text-sm text-muted-foreground">{account.name}</span>
                           </div>
-                          <span className="text-sm tabular-nums text-foreground">
-                            {formatCurrency(account.balance)}
-                          </span>
+                          <div className="flex items-center gap-3">
+                            <span className={cn("text-sm tabular-nums", account.balance < 0 ? "text-expense" : "text-foreground")}>
+                              {formatCurrency(account.balance)}
+                            </span>
+                            {account.kind === "credit_card" && account.debit_account_id && account.balance < 0 && (
+                              <button
+                                onClick={() => handleDebitTransfer(account)}
+                                disabled={debitTransferring === account.id}
+                                className="text-xs px-3 py-1 rounded-full bg-primary/10 text-primary hover:bg-primary/20 transition-colors disabled:opacity-50"
+                              >
+                                {debitTransferring === account.id ? "処理中..." : "引き落とし"}
+                              </button>
+                            )}
+                          </div>
                         </div>
                       ))}
                     </div>

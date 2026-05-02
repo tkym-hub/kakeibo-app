@@ -55,12 +55,14 @@ export default function SettingsPage() {
   const [newAccountName, setNewAccountName] = useState("")
   const [newAccountKind, setNewAccountKind] = useState<"bank" | "cash" | "credit_card" | "e_money">("bank")
   const [newAccountBalance, setNewAccountBalance] = useState("")
+  const [newAccountDebitId, setNewAccountDebitId] = useState("")
   const [addAccountOpen, setAddAccountOpen] = useState(false)
 
   // 口座編集
   const [editingAccount, setEditingAccount] = useState<Account | null>(null)
   const [editAccountName, setEditAccountName] = useState("")
   const [editAccountBalance, setEditAccountBalance] = useState("")
+  const [editAccountDebitId, setEditAccountDebitId] = useState("")
 
   // テンプレート編集
   const [editingTemplate, setEditingTemplate] = useState<RecurringTemplate | null>(null)
@@ -159,10 +161,12 @@ export default function SettingsPage() {
       opening_balance: parseInt(newAccountBalance) || 0,
       sort_order: 99,
       is_active: true,
+      debit_account_id: newAccountKind === "credit_card" && newAccountDebitId ? newAccountDebitId : null,
     })
     if (error) { alert("追加に失敗しました"); return }
     setNewAccountName("")
     setNewAccountBalance("")
+    setNewAccountDebitId("")
     setAddAccountOpen(false)
     loadData()
   }
@@ -173,6 +177,7 @@ export default function SettingsPage() {
     const { error } = await supabase.from("accounts").update({
       name: editAccountName.trim(),
       opening_balance: parseInt(editAccountBalance) || 0,
+      debit_account_id: editingAccount.kind === "credit_card" && editAccountDebitId ? editAccountDebitId : null,
     }).eq("id", editingAccount.id)
     if (error) { alert("変更に失敗しました"); return }
     setEditingAccount(null)
@@ -422,7 +427,7 @@ export default function SettingsPage() {
                       <DialogHeader><DialogTitle>口座を追加</DialogTitle></DialogHeader>
                       <div className="space-y-4 pt-4">
                         <Input placeholder="口座名" value={newAccountName} onChange={(e) => setNewAccountName(e.target.value)} className="rounded-xl" />
-                        <Select value={newAccountKind} onValueChange={(v) => setNewAccountKind(v as typeof newAccountKind)}>
+                        <Select value={newAccountKind} onValueChange={(v) => { setNewAccountKind(v as typeof newAccountKind); setNewAccountDebitId("") }}>
                           <SelectTrigger className="rounded-xl"><SelectValue placeholder="種類" /></SelectTrigger>
                           <SelectContent>
                             <SelectItem value="bank">銀行口座</SelectItem>
@@ -431,6 +436,16 @@ export default function SettingsPage() {
                             <SelectItem value="e_money">電子マネー</SelectItem>
                           </SelectContent>
                         </Select>
+                        {newAccountKind === "credit_card" && (
+                          <Select value={newAccountDebitId} onValueChange={setNewAccountDebitId}>
+                            <SelectTrigger className="rounded-xl"><SelectValue placeholder="引き落とし元口座（任意）" /></SelectTrigger>
+                            <SelectContent>
+                              {accounts.filter((a) => a.kind === "bank").map((a) => (
+                                <SelectItem key={a.id} value={a.id}>{a.icon} {a.name}</SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        )}
                         <Input type="number" placeholder="初期残高（任意）" value={newAccountBalance} onChange={(e) => setNewAccountBalance(e.target.value)} className="rounded-xl" />
                         <Button onClick={handleAddAccount} className="w-full rounded-xl">追加する</Button>
                       </div>
@@ -453,7 +468,7 @@ export default function SettingsPage() {
                         </div>
                         <div className="flex items-center gap-1">
                           <button
-                            onClick={() => { setEditingAccount(account); setEditAccountName(account.name); setEditAccountBalance(String(account.opening_balance ?? 0)) }}
+                            onClick={() => { setEditingAccount(account); setEditAccountName(account.name); setEditAccountBalance(String(account.opening_balance ?? 0)); setEditAccountDebitId(account.debit_account_id ?? "") }}
                             className="p-2 text-muted-foreground hover:text-foreground transition-colors"
                           >
                             <Pencil className="h-4 w-4" />
@@ -600,6 +615,16 @@ export default function SettingsPage() {
           <DialogHeader><DialogTitle>口座を編集</DialogTitle></DialogHeader>
           <div className="space-y-4 pt-4">
             <Input value={editAccountName} onChange={(e) => setEditAccountName(e.target.value)} className="rounded-xl" placeholder="口座名" />
+            {editingAccount?.kind === "credit_card" && (
+              <Select value={editAccountDebitId} onValueChange={setEditAccountDebitId}>
+                <SelectTrigger className="rounded-xl"><SelectValue placeholder="引き落とし元口座（任意）" /></SelectTrigger>
+                <SelectContent>
+                  {accounts.filter((a) => a.kind === "bank").map((a) => (
+                    <SelectItem key={a.id} value={a.id}>{a.icon} {a.name}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            )}
             <Input type="number" value={editAccountBalance} onChange={(e) => setEditAccountBalance(e.target.value)} className="rounded-xl" placeholder="初期残高" />
             <p className="text-xs text-muted-foreground">初期残高を変更すると現在の残高も変わります</p>
             <Button onClick={handleRenameAccount} disabled={!editAccountName.trim()} className="w-full rounded-xl">保存する</Button>

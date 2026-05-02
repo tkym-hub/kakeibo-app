@@ -59,7 +59,7 @@ export async function getCategories(): Promise<Category[]> {
 export async function getAccounts(): Promise<Account[]> {
   const { data: accountsData, error } = await supabase
     .from("accounts")
-    .select("id, name, kind, opening_balance")
+    .select("id, name, kind, opening_balance, debit_account_id")
     .eq("is_active", true)
     .order("sort_order")
     .order("name")
@@ -87,6 +87,7 @@ export async function getAccounts(): Promise<Account[]> {
     opening_balance: Number(row.opening_balance),
     balance: Number(row.opening_balance) + (balanceMap[row.id] ?? 0),
     icon: ACCOUNT_ICONS[row.kind] ?? "🏦",
+    debit_account_id: row.debit_account_id ?? null,
   }))
 }
 
