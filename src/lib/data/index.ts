@@ -1,5 +1,5 @@
 import { supabase } from "@/lib/supabase"
-import { Transaction, Category, Account, RecurringTemplate } from "@/lib/types"
+import { Transaction, Category, Account, RecurringTemplate, TransactionType } from "@/lib/types"
 
 // カテゴリアイコン静的マッピング（DBにiconが未設定の場合のフォールバック）
 const CATEGORY_ICONS: Record<string, string> = {
@@ -34,6 +34,16 @@ export const DEFAULT_CATEGORIES = [
   { name: "投資",     type: "expense", sort_order: 21, is_fixed: false },
   { name: "その他",   type: "expense", sort_order: 22, is_fixed: false },
 ] as const
+
+// --- 型定義 ---
+
+export type EntrySuggestion = {
+  name: string
+  category_id: string
+  account_id: string
+  type: TransactionType
+  amount: number
+}
 
 // --- データ取得関数 ---
 
@@ -136,6 +146,34 @@ export async function getTransactions(month?: string): Promise<Transaction[]> {
       transfer_pair_id: row.transfer_pair_id ?? null,
     }
   })
+}
+
+// 品目名サジェスト用: 直近200件の name 付き明細を取得し name で重複排除（最新優先）
+export async function getEntrySuggestions(): Promise<EntrySuggestion[]> {
+  const { data, error } = await supabase
+    .from("transactions")
+    .select("name, category_id, account_id, type, amount")
+    .not("name", "is", null)
+    .is("transfer_pair_id", null)
+    .order("created_at", { ascending: false })
+    .limit(200)
+
+  if (error) throw error
+
+  const seen = new Set<string>()
+  const result: EntrySuggestion[] = []
+  for (const row of data ?? []) {
+    if (!row.name || seen.has(row.name)) continue
+    seen.add(row.name)
+    result.push({
+      name: row.name,
+      category_id: row.category_id,
+      account_id: row.account_id,
+      type: row.type as TransactionType,
+      amount: Number(row.amount),
+    })
+  }
+  return result
 }
 
 // 振替カテゴリIDを取得（なければ is_active=false で自動作成）

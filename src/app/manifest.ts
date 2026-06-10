@@ -10,6 +10,14 @@ export default function manifest(): MetadataRoute.Manifest {
     background_color: "#f5f5f3",
     theme_color: "#f5f5f3",
     orientation: "portrait",
+    shortcuts: [
+      {
+        name: "新規入力",
+        short_name: "入力",
+        description: "新しい明細を追加する",
+        url: "/add",
+      },
+    ],
     icons: [
       {
         src: "/icon-192.png",
