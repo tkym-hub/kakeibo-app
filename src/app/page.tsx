@@ -5,6 +5,7 @@ import { AppLayout } from "@/components/app-layout"
 import { MonthSelector } from "@/components/month-selector"
 import { SummaryCard } from "@/components/summary-card"
 import { CategoryChart } from "@/components/category-chart"
+import { TrendChart, TrendDataPoint } from "@/components/trend-chart"
 import { RecentTransactions } from "@/components/recent-transactions"
 import { getTransactions, getCurrentMonth, shiftMonth } from "@/lib/data"
 import { Transaction } from "@/lib/types"
@@ -18,17 +19,53 @@ const CHART_COLORS = [
   "var(--color-muted-foreground)",
 ]
 
+const TREND_MONTHS = 6
+
+function toMonthLabel(month: string): string {
+  const match = month.match(/\d{4}年(\d{1,2}月)/)
+  return match ? match[1] : month
+}
 
 export default function DashboardPage() {
   const [currentMonth, setCurrentMonth] = useState(getCurrentMonth())
   const [transactions, setTransactions] = useState<Transaction[]>([])
+  const [trendData, setTrendData] = useState<TrendDataPoint[]>([])
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
+    let stale = false
     setLoading(true)
-    getTransactions(currentMonth)
-      .then(setTransactions)
-      .finally(() => setLoading(false))
+
+    const months = Array.from({ length: TREND_MONTHS }, (_, i) =>
+      shiftMonth(currentMonth, -(TREND_MONTHS - 1 - i))
+    )
+
+    Promise.all(months.map((m) => getTransactions(m))).then((results) => {
+      if (stale) return
+
+      // Current month transactions (last in the array)
+      setTransactions(results[TREND_MONTHS - 1])
+
+      // Build trend data for all 6 months
+      const trend: TrendDataPoint[] = months.map((month, i) => {
+        const nonTransfer = results[i].filter((t) => !t.transfer_pair_id)
+        const income = nonTransfer
+          .filter((t) => t.type === "income")
+          .reduce((s, t) => s + t.amount, 0)
+        const expense = nonTransfer
+          .filter((t) => t.type === "expense")
+          .reduce((s, t) => s + t.amount, 0)
+        return { month: toMonthLabel(month), income, expense }
+      })
+      setTrendData(trend)
+      setLoading(false)
+    }).catch(() => {
+      if (!stale) setLoading(false)
+    })
+
+    return () => {
+      stale = true
+    }
   }, [currentMonth])
 
   const monthlyData = useMemo(() => {
@@ -110,8 +147,13 @@ export default function DashboardPage() {
               </div>
             </div>
 
+            {/* Trend Chart */}
+            <div className="mt-8">
+              <TrendChart data={trendData} />
+            </div>
+
             {/* Recent Transactions */}
-            <div className="mt-12">
+            <div className="mt-8">
               <RecentTransactions transactions={transactions} />
             </div>
           </>
