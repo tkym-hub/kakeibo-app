@@ -89,17 +89,33 @@ export default function TransactionsPage() {
   }
 
   async function handleUpdate() {
-    if (!editingTx || !editAmount || !editCategoryId || !editAccountId) return
+    if (!editingTx || !editAmount) return
+    const isTransfer = !!editingTx.transfer_pair_id
+    if (!isTransfer && (!editCategoryId || !editAccountId)) return
     setSaving(true)
-    const { error } = await supabase.from("transactions").update({
-      type: editType,
-      amount: parseInt(editAmount),
-      category_id: editCategoryId,
-      account_id: editAccountId,
-      txn_date: editDate,
-      name: editName || null,
-      memo: editMemo || null,
-    }).eq("id", editingTx.id)
+
+    let error
+    if (isTransfer) {
+      // ペア両方に金額・日付・品目名・メモのみ反映（type, category_id, account_id は変更しない）
+      const { error: pairError } = await supabase.from("transactions").update({
+        amount: parseInt(editAmount),
+        txn_date: editDate,
+        name: editName || null,
+        memo: editMemo || null,
+      }).eq("transfer_pair_id", editingTx.transfer_pair_id)
+      error = pairError
+    } else {
+      const { error: singleError } = await supabase.from("transactions").update({
+        type: editType,
+        amount: parseInt(editAmount),
+        category_id: editCategoryId,
+        account_id: editAccountId,
+        txn_date: editDate,
+        name: editName || null,
+        memo: editMemo || null,
+      }).eq("id", editingTx.id)
+      error = singleError
+    }
     setSaving(false)
     if (error) { alert("保存に失敗しました"); return }
     setEditingTx(null)
@@ -107,10 +123,23 @@ export default function TransactionsPage() {
   }
 
   async function handleDelete(id: string) {
-    const { error } = await supabase.from("transactions").delete().eq("id", id)
+    const target = transactions.find((t) => t.id === id)
+    const pairId = target?.transfer_pair_id
+
+    let error
+    if (pairId) {
+      // 振替ペアを両方削除
+      const { error: pairError } = await supabase.from("transactions").delete().eq("transfer_pair_id", pairId)
+      error = pairError
+    } else {
+      const { error: singleError } = await supabase.from("transactions").delete().eq("id", id)
+      error = singleError
+    }
     if (error) { alert("削除に失敗しました"); return }
     setDeletingTxId(null)
-    setTransactions((prev) => prev.filter((t) => t.id !== id))
+    setTransactions((prev) =>
+      pairId ? prev.filter((t) => t.transfer_pair_id !== pairId) : prev.filter((t) => t.id !== id)
+    )
   }
 
   const filteredTransactions = useMemo(() => transactions.filter((t) => {
@@ -321,7 +350,11 @@ export default function TransactionsPage() {
             <DialogTitle>明細を削除</DialogTitle>
           </DialogHeader>
           <div className="space-y-5 pt-2">
-            <p className="text-sm text-muted-foreground">この明細を削除します。元に戻せません。</p>
+            <p className="text-sm text-muted-foreground">
+              {transactions.find((t) => t.id === deletingTxId)?.transfer_pair_id
+                ? "振替の両方の明細が削除されます。元に戻せません。"
+                : "この明細を削除します。元に戻せません。"}
+            </p>
             <div className="flex gap-3">
               <Button
                 variant="outline"
@@ -350,21 +383,23 @@ export default function TransactionsPage() {
           </DialogHeader>
 
           <div className="space-y-5 pt-2">
-            {/* Type Toggle */}
-            <div className="flex rounded-full bg-muted p-1">
-              {(["expense", "income"] as TransactionType[]).map((t) => (
-                <button
-                  key={t}
-                  onClick={() => { setEditType(t); setEditCategoryId("") }}
-                  className={cn(
-                    "flex-1 py-2 rounded-full text-sm transition-all",
-                    editType === t ? "bg-card text-foreground shadow-sm" : "text-muted-foreground"
-                  )}
-                >
-                  {t === "expense" ? "支出" : "収入"}
-                </button>
-              ))}
-            </div>
+            {/* Type Toggle - 振替明細は種類変更不可 */}
+            {!editingTx?.transfer_pair_id && (
+              <div className="flex rounded-full bg-muted p-1">
+                {(["expense", "income"] as TransactionType[]).map((t) => (
+                  <button
+                    key={t}
+                    onClick={() => { setEditType(t); setEditCategoryId("") }}
+                    className={cn(
+                      "flex-1 py-2 rounded-full text-sm transition-all",
+                      editType === t ? "bg-card text-foreground shadow-sm" : "text-muted-foreground"
+                    )}
+                  >
+                    {t === "expense" ? "支出" : "収入"}
+                  </button>
+                ))}
+              </div>
+            )}
 
             {/* Name */}
             <div>
@@ -394,35 +429,39 @@ export default function TransactionsPage() {
               </div>
             </div>
 
-            {/* Category */}
-            <div>
-              <p className="text-xs tracking-wide uppercase text-muted-foreground mb-2">カテゴリ</p>
-              <Select value={editCategoryId} onValueChange={setEditCategoryId}>
-                <SelectTrigger className="rounded-xl border-0 bg-muted/50">
-                  <SelectValue placeholder="選択" />
-                </SelectTrigger>
-                <SelectContent>
-                  {editFilteredCategories.map((c) => (
-                    <SelectItem key={c.id} value={c.id}>{c.icon} {c.name}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
+            {/* Category - 振替明細は非表示 */}
+            {!editingTx?.transfer_pair_id && (
+              <div>
+                <p className="text-xs tracking-wide uppercase text-muted-foreground mb-2">カテゴリ</p>
+                <Select value={editCategoryId} onValueChange={setEditCategoryId}>
+                  <SelectTrigger className="rounded-xl border-0 bg-muted/50">
+                    <SelectValue placeholder="選択" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {editFilteredCategories.map((c) => (
+                      <SelectItem key={c.id} value={c.id}>{c.icon} {c.name}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
 
-            {/* Account */}
-            <div>
-              <p className="text-xs tracking-wide uppercase text-muted-foreground mb-2">口座</p>
-              <Select value={editAccountId} onValueChange={setEditAccountId}>
-                <SelectTrigger className="rounded-xl border-0 bg-muted/50">
-                  <SelectValue placeholder="選択" />
-                </SelectTrigger>
-                <SelectContent>
-                  {accounts.map((a) => (
-                    <SelectItem key={a.id} value={a.id}>{a.icon} {a.name}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
+            {/* Account - 振替明細は非表示 */}
+            {!editingTx?.transfer_pair_id && (
+              <div>
+                <p className="text-xs tracking-wide uppercase text-muted-foreground mb-2">口座</p>
+                <Select value={editAccountId} onValueChange={setEditAccountId}>
+                  <SelectTrigger className="rounded-xl border-0 bg-muted/50">
+                    <SelectValue placeholder="選択" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {accounts.map((a) => (
+                      <SelectItem key={a.id} value={a.id}>{a.icon} {a.name}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
 
             {/* Date */}
             <div>
@@ -451,7 +490,7 @@ export default function TransactionsPage() {
 
             <Button
               onClick={handleUpdate}
-              disabled={saving || !editAmount || !editCategoryId || !editAccountId}
+              disabled={saving || !editAmount || (!editingTx?.transfer_pair_id && (!editCategoryId || !editAccountId))}
               className="w-full rounded-xl"
             >
               {saving ? "保存中..." : "保存する"}

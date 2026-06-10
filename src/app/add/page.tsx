@@ -7,7 +7,7 @@ import { AppLayout } from "@/components/app-layout"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
-import { getCategories, getAccounts } from "@/lib/data"
+import { getCategories, getAccounts, getOrCreateTransferCategory } from "@/lib/data"
 import { Category, Account, TransactionType } from "@/lib/types"
 import { supabase } from "@/lib/supabase"
 import { cn } from "@/lib/utils"
@@ -73,28 +73,7 @@ export default function AddTransactionPage() {
 
     try {
       if (isTransfer) {
-        // 振替カテゴリを取得（.limit(1) で複数件でも安全）。なければ is_active=false で自動作成
-        const { data: existingCats, error: catFetchError } = await supabase
-          .from("categories")
-          .select("id")
-          .eq("type", "transfer")
-          .eq("user_id", user.id)
-          .limit(1)
-        if (catFetchError) throw catFetchError
-
-        let transferCategoryId: string
-        if (existingCats && existingCats.length > 0) {
-          transferCategoryId = existingCats[0].id
-        } else {
-          const { data: newCat, error: catError } = await supabase
-            .from("categories")
-            .insert({ user_id: user.id, name: "振替", type: "transfer", sort_order: 99, is_active: false })
-            .select("id")
-            .single()
-          if (catError || !newCat) throw catError
-          transferCategoryId = newCat.id
-        }
-
+        const transferCategoryId = await getOrCreateTransferCategory(user.id)
         const pairId = crypto.randomUUID()
         const { error: insertError } = await supabase.from("transactions").insert([
           {

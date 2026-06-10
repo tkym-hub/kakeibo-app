@@ -6,7 +6,7 @@ import { MonthSelector } from "@/components/month-selector"
 import { SummaryCard } from "@/components/summary-card"
 import { CategoryChart } from "@/components/category-chart"
 import { RecentTransactions } from "@/components/recent-transactions"
-import { getTransactions, getCurrentMonth } from "@/lib/data"
+import { getTransactions, getCurrentMonth, shiftMonth } from "@/lib/data"
 import { Transaction } from "@/lib/types"
 
 const CHART_COLORS = [
@@ -18,12 +18,6 @@ const CHART_COLORS = [
   "var(--color-muted-foreground)",
 ]
 
-function shiftMonth(month: string, delta: number): string {
-  const match = month.match(/(\d{4})年(\d{1,2})月/)
-  if (!match) return month
-  const date = new Date(parseInt(match[1]), parseInt(match[2]) - 1 + delta)
-  return `${date.getFullYear()}年${date.getMonth() + 1}月`
-}
 
 export default function DashboardPage() {
   const [currentMonth, setCurrentMonth] = useState(getCurrentMonth())
@@ -38,17 +32,18 @@ export default function DashboardPage() {
   }, [currentMonth])
 
   const monthlyData = useMemo(() => {
-    const income = transactions
+    const nonTransfer = transactions.filter((t) => !t.transfer_pair_id)
+    const income = nonTransfer
       .filter((t) => t.type === "income")
       .reduce((s, t) => s + t.amount, 0)
-    const expense = transactions
+    const expense = nonTransfer
       .filter((t) => t.type === "expense")
       .reduce((s, t) => s + t.amount, 0)
     const balance = income - expense
     const savingsRate = income > 0 ? Math.round(((income - expense) / income) * 1000) / 10 : 0
 
     const categoryMap: Record<string, number> = {}
-    for (const t of transactions.filter((t) => t.type === "expense")) {
+    for (const t of nonTransfer.filter((t) => t.type === "expense")) {
       categoryMap[t.category] = (categoryMap[t.category] ?? 0) + t.amount
     }
     const sorted = Object.entries(categoryMap).sort((a, b) => b[1] - a[1])
