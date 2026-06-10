@@ -83,6 +83,9 @@ export default function SettingsPage() {
   const [addTplOpen, setAddTplOpen] = useState(false)
   const [applyingTemplates, setApplyingTemplates] = useState(false)
 
+  // 削除確認用
+  const [deletingItem, setDeletingItem] = useState<{ kind: "category" | "account" | "template"; id: string; name: string } | null>(null)
+
   async function loadData() {
     setLoading(true)
     const [cats, accs, tpls] = await Promise.all([getCategories(), getAccounts(), getTemplates()])
@@ -236,6 +239,26 @@ export default function SettingsPage() {
     loadData()
   }
 
+  // 削除確認ダイアログからの実行
+  async function handleConfirmDelete() {
+    if (!deletingItem) return
+    const { kind, id } = deletingItem
+    let error = null
+    if (kind === "category") {
+      const result = await supabase.from("categories").update({ is_active: false }).eq("id", id)
+      error = result.error
+    } else if (kind === "account") {
+      const result = await supabase.from("accounts").update({ is_active: false }).eq("id", id)
+      error = result.error
+    } else {
+      const result = await supabase.from("recurring_templates").update({ is_active: false }).eq("id", id)
+      error = result.error
+    }
+    if (error) { alert("削除に失敗しました"); return }
+    setDeletingItem(null)
+    loadData()
+  }
+
   // 今月分を一括登録
   async function handleApplyTemplates() {
     if (templates.length === 0) return
@@ -308,7 +331,7 @@ export default function SettingsPage() {
                 <Pencil className="h-4 w-4" />
               </button>
               <button
-                onClick={() => handleDeleteCategory(category.id)}
+                onClick={() => setDeletingItem({ kind: "category", id: category.id, name: category.name })}
                 className="p-2 text-muted-foreground hover:text-destructive transition-colors"
               >
                 <Trash2 className="h-4 w-4" />
@@ -474,7 +497,7 @@ export default function SettingsPage() {
                             <Pencil className="h-4 w-4" />
                           </button>
                           <button
-                            onClick={() => handleDeleteAccount(account.id)}
+                            onClick={() => setDeletingItem({ kind: "account", id: account.id, name: account.name })}
                             className="p-2 text-muted-foreground hover:text-destructive transition-colors"
                           >
                             <Trash2 className="h-4 w-4" />
@@ -569,7 +592,7 @@ export default function SettingsPage() {
                               <Pencil className="h-4 w-4" />
                             </button>
                             <button
-                              onClick={() => handleDeleteTemplate(tpl.id)}
+                              onClick={() => setDeletingItem({ kind: "template", id: tpl.id, name: tpl.name })}
                               className="p-2 text-muted-foreground hover:text-destructive transition-colors"
                             >
                               <Trash2 className="h-4 w-4" />
@@ -628,6 +651,28 @@ export default function SettingsPage() {
             <Input type="number" value={editAccountBalance} onChange={(e) => setEditAccountBalance(e.target.value)} className="rounded-xl" placeholder="初期残高" />
             <p className="text-xs text-muted-foreground">初期残高を変更すると現在の残高も変わります</p>
             <Button onClick={handleRenameAccount} disabled={!editAccountName.trim()} className="w-full rounded-xl">保存する</Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* 削除確認 Dialog */}
+      <Dialog open={!!deletingItem} onOpenChange={(o) => { if (!o) setDeletingItem(null) }}>
+        <DialogContent className="rounded-2xl max-w-sm">
+          <DialogHeader>
+            <DialogTitle>
+              {deletingItem?.kind === "category" ? "カテゴリを削除" : deletingItem?.kind === "account" ? "口座を削除" : "固定費を削除"}
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-5 pt-2">
+            <p className="text-sm text-muted-foreground">「{deletingItem?.name}」を削除します。元に戻せません。</p>
+            <div className="flex gap-3">
+              <Button variant="outline" className="flex-1 rounded-xl" onClick={() => setDeletingItem(null)}>
+                キャンセル
+              </Button>
+              <Button variant="destructive" className="flex-1 rounded-xl" onClick={handleConfirmDelete}>
+                削除する
+              </Button>
+            </div>
           </div>
         </DialogContent>
       </Dialog>

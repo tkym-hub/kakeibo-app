@@ -138,6 +138,29 @@ export async function getTransactions(month?: string): Promise<Transaction[]> {
   })
 }
 
+// 振替カテゴリIDを取得（なければ is_active=false で自動作成）
+export async function getOrCreateTransferCategory(userId: string): Promise<string> {
+  const { data: existingCats, error: catFetchError } = await supabase
+    .from("categories")
+    .select("id")
+    .eq("type", "transfer")
+    .eq("user_id", userId)
+    .limit(1)
+  if (catFetchError) throw catFetchError
+
+  if (existingCats && existingCats.length > 0) {
+    return existingCats[0].id
+  }
+
+  const { data: newCat, error: catError } = await supabase
+    .from("categories")
+    .insert({ user_id: userId, name: "振替", type: "transfer", sort_order: 99, is_active: false })
+    .select("id")
+    .single()
+  if (catError || !newCat) throw catError
+  return newCat.id
+}
+
 export async function getTemplates(): Promise<RecurringTemplate[]> {
   const { data, error } = await supabase
     .from("recurring_templates")

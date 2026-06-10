@@ -4,7 +4,7 @@ import { useState, useEffect, useMemo } from "react"
 import Link from "next/link"
 import { AppLayout } from "@/components/app-layout"
 import { MonthSelector } from "@/components/month-selector"
-import { formatCurrency, getTransactions, getAccounts, getCategories, getTemplates, getCurrentMonth, shiftMonth } from "@/lib/data"
+import { formatCurrency, getTransactions, getAccounts, getCategories, getTemplates, getCurrentMonth, shiftMonth, getOrCreateTransferCategory } from "@/lib/data"
 import { Transaction, Account, Category, RecurringTemplate } from "@/lib/types"
 import { cn } from "@/lib/utils"
 import { supabase } from "@/lib/supabase"
@@ -91,8 +91,9 @@ export default function MonthlyDetailsPage() {
 
   async function handleDebitTransfer(creditAccount: Account) {
     if (!creditAccount.debit_account_id) return
+    // transfer_pair_id 付きの expense（カードからの振替）は除外して二重計上を防ぐ
     const amount = transactions
-      .filter((t) => t.account_id === creditAccount.id && t.type === "expense")
+      .filter((t) => t.account_id === creditAccount.id && t.type === "expense" && !t.transfer_pair_id)
       .reduce((sum, t) => sum + t.amount, 0)
     if (amount === 0) return
     setDebitTransferring(creditAccount.id)
@@ -100,26 +101,7 @@ export default function MonthlyDetailsPage() {
       const { data: { user } } = await supabase.auth.getUser()
       if (!user) return
 
-      const { data: existingCats, error: catFetchError } = await supabase
-        .from("categories")
-        .select("id")
-        .eq("type", "transfer")
-        .eq("user_id", user.id)
-        .limit(1)
-      if (catFetchError) throw catFetchError
-
-      let transferCategoryId: string
-      if (existingCats && existingCats.length > 0) {
-        transferCategoryId = existingCats[0].id
-      } else {
-        const { data: newCat, error: catError } = await supabase
-          .from("categories")
-          .insert({ user_id: user.id, name: "振替", type: "transfer", sort_order: 99, is_active: false })
-          .select("id")
-          .single()
-        if (catError || !newCat) throw catError
-        transferCategoryId = newCat.id
-      }
+      const transferCategoryId = await getOrCreateTransferCategory(user.id)
       const txnDate = untilDate ?? new Date().toISOString().split("T")[0]
       const pairId = crypto.randomUUID()
 
