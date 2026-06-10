@@ -18,6 +18,14 @@ No test or lint commands are configured.
 
 **Kakeibo-app** — 個人家計簿アプリ。Next.js 16 + React 19 + Supabase（PostgreSQL + Auth）。
 
+### Target Device
+
+メインユーザーの利用端末は **iPad（PWAとしてホーム画面に追加）**。
+
+- UI判断はタッチ操作・iPad画面サイズを最優先（ホバー前提のUIは避ける、タップターゲットは大きめに）
+- iPadOS は manifest の `shortcuts` に未対応。PWAショートカット系の機能はメインユーザーには効かない（Android/デスクトップ向けのおまけ扱い）
+- manifest 変更はインストール済みPWAに即反映されない（再インストールが必要な場合あり）
+
 ### Routing (`src/app/`)
 
 | Route | Purpose |
