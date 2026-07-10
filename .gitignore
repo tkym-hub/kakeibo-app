@@ -42,3 +42,8 @@ supabase/.temp/
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# claude code local settings / worktrees
+.claude/settings.local.json
+.claude/worktrees/
+.claude/skills/
