@@ -34,7 +34,7 @@ export function RecentTransactions({ transactions }: RecentTransactionsProps) {
                   {transaction.icon ?? "📦"}
                 </div>
                 <div>
-                  <p className="text-sm font-medium text-foreground">{transaction.category}</p>
+                  <p className="text-sm font-medium text-foreground">{transaction.name || transaction.category}</p>
                   <p className="text-xs text-muted-foreground mt-0.5">
                     {formatDate(transaction.date)}
                   </p>
