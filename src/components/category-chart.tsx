@@ -46,7 +46,7 @@ export function CategoryChart({ data }: CategoryChartProps) {
 
       {/* Legend */}
       <ul className="space-y-3">
-        {data.slice(0, 5).map((item, index) => {
+        {data.map((item, index) => {
           const percentage = ((item.value / total) * 100).toFixed(0)
           return (
             <li key={index} className="flex items-center justify-between">
