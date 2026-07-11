@@ -167,6 +167,8 @@ export default function SettingsPage() {
   // 口座追加
   async function handleAddAccount() {
     if (!newAccountName.trim()) return
+    const openingBalance = parseInt(newAccountBalance) || 0
+    if (openingBalance < 0) { alert("初期残高は0以上で入力してください"); return }
     const user = await getUser()
     if (!user) return
     const { error } = await supabase.from("accounts").insert({
@@ -174,7 +176,7 @@ export default function SettingsPage() {
       name: newAccountName.trim(),
       icon: newAccountIcon.trim() || null,
       kind: newAccountKind,
-      opening_balance: parseInt(newAccountBalance) || 0,
+      opening_balance: openingBalance,
       sort_order: 99,
       is_active: true,
       debit_account_id: newAccountKind === "credit_card" && newAccountDebitId ? newAccountDebitId : null,
@@ -191,10 +193,12 @@ export default function SettingsPage() {
   // 口座名変更
   async function handleRenameAccount() {
     if (!editingAccount || !editAccountName.trim()) return
+    const editOpeningBalance = parseInt(editAccountBalance) || 0
+    if (editOpeningBalance < 0) { alert("初期残高は0以上で入力してください"); return }
     const { error } = await supabase.from("accounts").update({
       name: editAccountName.trim(),
       icon: editAccountIcon.trim() || null,
-      opening_balance: parseInt(editAccountBalance) || 0,
+      opening_balance: editOpeningBalance,
       debit_account_id: editingAccount.kind === "credit_card" && editAccountDebitId ? editAccountDebitId : null,
     }).eq("id", editingAccount.id)
     if (error) { alert("変更に失敗しました"); return }
