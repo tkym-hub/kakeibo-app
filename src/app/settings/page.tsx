@@ -44,12 +44,14 @@ export default function SettingsPage() {
   const [newCategoryName, setNewCategoryName] = useState("")
   const [newCategoryIcon, setNewCategoryIcon] = useState("")
   const [newCategoryType, setNewCategoryType] = useState<"income" | "expense">("expense")
+  const [newCategoryIsFixed, setNewCategoryIsFixed] = useState(false)
   const [addCategoryOpen, setAddCategoryOpen] = useState(false)
 
   // カテゴリ編集
   const [editingCategory, setEditingCategory] = useState<Category | null>(null)
   const [editCategoryName, setEditCategoryName] = useState("")
   const [editCategoryIcon, setEditCategoryIcon] = useState("")
+  const [editCategoryIsFixed, setEditCategoryIsFixed] = useState(false)
 
   // 口座追加
   const [newAccountName, setNewAccountName] = useState("")
@@ -123,12 +125,13 @@ export default function SettingsPage() {
       icon: newCategoryIcon.trim() || null,
       type: newCategoryType,
       sort_order: 99,
-      is_fixed: false,
+      is_fixed: newCategoryType === "expense" ? newCategoryIsFixed : false,
       is_active: true,
     })
     if (error) { alert("追加に失敗しました"); return }
     setNewCategoryName("")
     setNewCategoryIcon("")
+    setNewCategoryIsFixed(false)
     setAddCategoryOpen(false)
     loadData()
   }
@@ -139,6 +142,7 @@ export default function SettingsPage() {
     const { error } = await supabase.from("categories").update({
       name: editCategoryName.trim(),
       icon: editCategoryIcon.trim() || null,
+      is_fixed: editingCategory.type === "expense" ? editCategoryIsFixed : false,
     }).eq("id", editingCategory.id)
     if (error) { alert("変更に失敗しました"); return }
     setEditingCategory(null)
@@ -325,7 +329,7 @@ export default function SettingsPage() {
             </div>
             <div className="flex items-center gap-1">
               <button
-                onClick={() => { setEditingCategory(category); setEditCategoryName(category.name); setEditCategoryIcon(category.icon) }}
+                onClick={() => { setEditingCategory(category); setEditCategoryName(category.name); setEditCategoryIcon(category.icon); setEditCategoryIsFixed(category.is_fixed) }}
                 className="p-2 text-muted-foreground hover:text-foreground transition-colors"
               >
                 <Pencil className="h-4 w-4" />
@@ -427,6 +431,26 @@ export default function SettingsPage() {
                             <Input placeholder="カテゴリ名" value={newCategoryName} onChange={(e) => setNewCategoryName(e.target.value)} className="rounded-xl flex-1" />
                           </div>
                           <p className="text-xs text-muted-foreground">絵文字は省略可（自動で割り当てます）</p>
+                          <div className="flex items-center justify-between rounded-xl bg-muted/30 px-4 py-3">
+                            <span className="text-sm text-foreground">固定費として扱う</span>
+                            <button
+                              type="button"
+                              role="switch"
+                              aria-checked={newCategoryIsFixed}
+                              onClick={() => setNewCategoryIsFixed(!newCategoryIsFixed)}
+                              className={cn(
+                                "relative inline-flex h-5 w-9 flex-shrink-0 items-center rounded-full transition-colors",
+                                newCategoryIsFixed ? "bg-foreground" : "bg-muted"
+                              )}
+                            >
+                              <span
+                                className={cn(
+                                  "inline-block h-4 w-4 transform rounded-full bg-background transition-transform",
+                                  newCategoryIsFixed ? "translate-x-4" : "translate-x-0.5"
+                                )}
+                              />
+                            </button>
+                          </div>
                           <Button onClick={handleAddCategory} disabled={!newCategoryName.trim()} className="w-full rounded-xl">追加する</Button>
                         </div>
                       </DialogContent>
@@ -627,6 +651,28 @@ export default function SettingsPage() {
               <Input placeholder="絵文字" value={editCategoryIcon} onChange={(e) => setEditCategoryIcon(e.target.value)} className="rounded-xl w-20 text-center text-lg" maxLength={8} />
               <Input value={editCategoryName} onChange={(e) => setEditCategoryName(e.target.value)} className="rounded-xl flex-1" />
             </div>
+            {editingCategory?.type === "expense" && (
+              <div className="flex items-center justify-between rounded-xl bg-muted/30 px-4 py-3">
+                <span className="text-sm text-foreground">固定費として扱う</span>
+                <button
+                  type="button"
+                  role="switch"
+                  aria-checked={editCategoryIsFixed}
+                  onClick={() => setEditCategoryIsFixed(!editCategoryIsFixed)}
+                  className={cn(
+                    "relative inline-flex h-5 w-9 flex-shrink-0 items-center rounded-full transition-colors",
+                    editCategoryIsFixed ? "bg-foreground" : "bg-muted"
+                  )}
+                >
+                  <span
+                    className={cn(
+                      "inline-block h-4 w-4 transform rounded-full bg-background transition-transform",
+                      editCategoryIsFixed ? "translate-x-4" : "translate-x-0.5"
+                    )}
+                  />
+                </button>
+              </div>
+            )}
             <Button onClick={handleRenameCategory} disabled={!editCategoryName.trim()} className="w-full rounded-xl">保存する</Button>
           </div>
         </DialogContent>
