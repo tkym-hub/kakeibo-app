@@ -27,6 +27,12 @@ import {
 
 type SettingsTab = "categories" | "accounts" | "templates"
 
+function isValidDayOfMonth(value: string): boolean {
+  if (!value.trim()) return false
+  const n = Number(value)
+  return Number.isInteger(n) && n >= 1 && n <= 31
+}
+
 const tabs = [
   { id: "categories" as const, label: "カテゴリ", icon: Tags },
   { id: "accounts" as const, label: "口座", icon: Wallet },
@@ -205,7 +211,7 @@ export default function SettingsPage() {
 
   // テンプレート追加
   async function handleAddTemplate() {
-    if (!newTplName.trim() || !newTplAmount || !newTplCategoryId || !newTplAccountId || !newTplDay) return
+    if (!newTplName.trim() || !newTplAmount || !newTplCategoryId || !newTplAccountId || !isValidDayOfMonth(newTplDay)) return
     const user = await getUser()
     if (!user) return
     const { error } = await supabase.from("recurring_templates").insert({
@@ -227,7 +233,7 @@ export default function SettingsPage() {
   async function handleUpdateTemplate() {
     const amount = parseInt(editTplAmount)
     const day = parseInt(editTplDay)
-    if (!editingTemplate || !editTplName.trim() || isNaN(amount) || !editTplCategoryId || !editTplAccountId || isNaN(day)) return
+    if (!editingTemplate || !editTplName.trim() || isNaN(amount) || !editTplCategoryId || !editTplAccountId || !isValidDayOfMonth(editTplDay)) return
     const { error } = await supabase.from("recurring_templates").update({
       name: editTplName.trim(),
       amount,
@@ -583,7 +589,10 @@ export default function SettingsPage() {
                           </SelectContent>
                         </Select>
                         <Input type="number" placeholder="引落日（1〜31）" min="1" max="31" value={newTplDay} onChange={(e) => setNewTplDay(e.target.value)} className="rounded-xl" />
-                        <Button onClick={handleAddTemplate} disabled={!newTplName || !newTplAmount || !newTplCategoryId || !newTplAccountId || !newTplDay} className="w-full rounded-xl">
+                        {newTplDay && !isValidDayOfMonth(newTplDay) && (
+                          <p className="text-xs text-destructive">引落日は1〜31の範囲で入力してください</p>
+                        )}
+                        <Button onClick={handleAddTemplate} disabled={!newTplName || !newTplAmount || !newTplCategoryId || !newTplAccountId || !isValidDayOfMonth(newTplDay)} className="w-full rounded-xl">
                           追加する
                         </Button>
                       </div>
@@ -768,7 +777,10 @@ export default function SettingsPage() {
               </SelectContent>
             </Select>
             <Input type="number" placeholder="引落日（1〜31）" min="1" max="31" value={editTplDay} onChange={(e) => setEditTplDay(e.target.value)} className="rounded-xl" />
-            <Button onClick={handleUpdateTemplate} disabled={!editTplName.trim() || !editTplAmount || !editTplCategoryId || !editTplAccountId || !editTplDay} className="w-full rounded-xl">保存する</Button>
+            {editTplDay && !isValidDayOfMonth(editTplDay) && (
+              <p className="text-xs text-destructive">引落日は1〜31の範囲で入力してください</p>
+            )}
+            <Button onClick={handleUpdateTemplate} disabled={!editTplName.trim() || !editTplAmount || !editTplCategoryId || !editTplAccountId || !isValidDayOfMonth(editTplDay)} className="w-full rounded-xl">保存する</Button>
           </div>
         </DialogContent>
       </Dialog>
