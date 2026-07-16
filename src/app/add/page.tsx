@@ -346,7 +346,7 @@ export default function AddTransactionPage() {
                   className={cn(
                     "flex items-center gap-2 px-[18px] py-[9px] rounded-full text-[13px] border transition-colors",
                     selectedAccount === account.id
-                      ? "border-border-strong font-medium text-foreground"
+                      ? "border-primary bg-primary/5 font-medium text-foreground"
                       : "border-border-mid text-muted-foreground"
                   )}
                 >
