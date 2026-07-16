@@ -19,38 +19,41 @@ const KIND_LABELS: Record<string, string> = {
 }
 const KIND_ORDER = ["bank", "cash", "credit_card", "e_money"]
 
-interface SectionProps {
+interface BreakdownSectionProps {
   title: string
   total: number
   items: { name: string; amount: number }[]
   type?: "income" | "expense" | "investment"
+  emptyLabel?: string
 }
 
-function Section({ title, total, items, type = "expense" }: SectionProps) {
-  const colorClass = {
-    income: "text-income",
-    expense: "text-foreground",
-    investment: "text-primary",
-  }[type]
+function BreakdownSection({ title, total, items, type = "expense", emptyLabel }: BreakdownSectionProps) {
+  const totalColorClass =
+    type === "income" ? "text-income" : total === 0 ? "text-muted-foreground" : "text-foreground"
 
   return (
-    <div className="rounded-2xl bg-card p-6">
-      <div className="flex items-center justify-between mb-5">
-        <span className="text-xs tracking-wide uppercase text-muted-foreground">{title}</span>
-        <span className={cn("text-lg tabular-nums font-light", colorClass)}>
+    <div>
+      <div className="flex items-baseline justify-between border-b border-border-strong pb-[10px] mb-1.5">
+        <span className="text-xs tracking-[0.1em] text-muted-foreground">{title}</span>
+        <span className={cn("font-serif text-xl tabular-nums", totalColorClass)}>
           {formatCurrency(total)}
         </span>
       </div>
-      <ul className="space-y-3">
-        {items.map((item, index) => (
-          <li key={index} className="flex items-center justify-between">
-            <span className="text-sm text-muted-foreground">{item.name}</span>
-            <span className="text-sm tabular-nums text-foreground">
-              {formatCurrency(item.amount)}
-            </span>
-          </li>
-        ))}
-      </ul>
+      {items.length === 0 ? (
+        <p className="text-xs text-muted-foreground/80 py-3">{emptyLabel ?? "データがありません"}</p>
+      ) : (
+        <ul>
+          {items.map((item, index) => (
+            <li key={index} className="flex items-baseline gap-3 py-[11px]">
+              <span className="text-[13.5px] text-foreground">{item.name}</span>
+              <span className="flex-1 border-b border-dotted border-leader -translate-y-1" />
+              <span className="font-serif text-[15px] tabular-nums text-foreground">
+                {formatCurrency(item.amount)}
+              </span>
+            </li>
+          ))}
+        </ul>
+      )}
     </div>
   )
 }
@@ -219,129 +222,121 @@ export default function MonthlyDetailsPage() {
 
   return (
     <AppLayout>
-      <div className="px-5 py-8 md:px-10 md:py-12">
+      <div className="max-w-[920px] mx-auto px-5 pt-8 pb-16 md:px-10 md:pt-12 md:pb-[72px]">
         {/* Header */}
-        <header className="mb-10">
-          <p className="text-xs tracking-widest uppercase text-muted-foreground mb-2">
+        <header className="mb-9">
+          <p className="italic font-serif text-sm tracking-[0.14em] text-muted-foreground mb-3">
             Monthly Report
           </p>
-          <div className="flex items-center justify-between">
-            <MonthSelector
-              month={currentMonth}
-              onPrevious={() => setCurrentMonth(shiftMonth(currentMonth, -1))}
-              onNext={() => setCurrentMonth(shiftMonth(currentMonth, 1))}
-              size="lg"
-            />
-          </div>
+          <MonthSelector
+            month={currentMonth}
+            onPrevious={() => setCurrentMonth(shiftMonth(currentMonth, -1))}
+            onNext={() => setCurrentMonth(shiftMonth(currentMonth, 1))}
+            size="lg"
+          />
         </header>
 
         {loading ? (
           <div className="text-center py-20 text-muted-foreground text-sm">読み込み中...</div>
         ) : (
           <>
-            {/* Summary Bar */}
-            <div className="grid grid-cols-4 gap-4 mb-10 py-6 border-y border-border/50">
-              <div className="text-center">
-                <p className="text-[10px] tracking-wide uppercase text-muted-foreground mb-1">収入</p>
-                <p className="text-base md:text-lg font-light tabular-nums text-income">
+            {/* Summary Bar (深緑パネル) */}
+            <div className="flex flex-col sm:flex-row rounded-[6px] bg-panel text-panel-foreground px-6 py-6 sm:px-11 sm:py-7 mb-12 gap-6 sm:gap-0">
+              <div className="flex-1 sm:pl-9 sm:first:pl-0">
+                <p className="text-[11px] tracking-[0.12em] opacity-65 mb-2">収入</p>
+                <p className="font-serif text-2xl tabular-nums">
                   {formatCurrency(monthlyBreakdown.income.total)}
                 </p>
               </div>
-              <div className="text-center">
-                <p className="text-[10px] tracking-wide uppercase text-muted-foreground mb-1">支出</p>
-                <p className="text-base md:text-lg font-light tabular-nums text-foreground">
+              <div className="flex-1 sm:border-l sm:border-panel-foreground/20 sm:pl-9">
+                <p className="text-[11px] tracking-[0.12em] opacity-65 mb-2">支出</p>
+                <p className="font-serif text-2xl tabular-nums">
                   {formatCurrency(totalExpense)}
                 </p>
               </div>
-              <div className="text-center">
-                <p className="text-[10px] tracking-wide uppercase text-muted-foreground mb-1">投資</p>
-                <p className="text-base md:text-lg font-light tabular-nums text-primary">
+              <div className="flex-1 sm:border-l sm:border-panel-foreground/20 sm:pl-9">
+                <p className="text-[11px] tracking-[0.12em] opacity-65 mb-2">投資</p>
+                <p className="font-serif text-2xl tabular-nums">
                   {formatCurrency(monthlyBreakdown.investments.total)}
                 </p>
               </div>
-              <div className="text-center">
-                <p className="text-[10px] tracking-wide uppercase text-muted-foreground mb-1">収支</p>
-                <p className={cn(
-                  "text-base md:text-lg font-light tabular-nums",
-                  balance >= 0 ? "text-income" : "text-expense"
-                )}>
+              <div className="flex-1 sm:border-l sm:border-panel-foreground/20 sm:pl-9">
+                <p className="text-[11px] tracking-[0.12em] opacity-65 mb-2">収支</p>
+                <p className="font-serif text-2xl tabular-nums">
                   {balance >= 0 ? "+" : ""}{formatCurrency(balance)}
                 </p>
               </div>
             </div>
 
             {/* Breakdown Grid */}
-            <div className="grid gap-4 md:grid-cols-2">
-              <Section
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-x-16 gap-y-6">
+              <BreakdownSection
                 title="収入"
                 total={monthlyBreakdown.income.total}
                 items={monthlyBreakdown.income.items}
                 type="income"
               />
-              <Section
+              <BreakdownSection
                 title="固定費"
                 total={monthlyBreakdown.fixedExpenses.total}
                 items={monthlyBreakdown.fixedExpenses.items}
                 type="expense"
               />
-              <Section
+              <BreakdownSection
                 title="変動費"
                 total={monthlyBreakdown.variableExpenses.total}
                 items={monthlyBreakdown.variableExpenses.items}
                 type="expense"
               />
-              <Section
+              <BreakdownSection
                 title="投資"
                 total={monthlyBreakdown.investments.total}
                 items={monthlyBreakdown.investments.items}
                 type="investment"
+                emptyLabel="今月の投資はありません"
               />
             </div>
 
-            {/* Account Balances */}
-            <div className="mt-10">
-              <p className="text-xs tracking-wide uppercase text-muted-foreground mb-4">
-                口座残高
+            {/* Accounts */}
+            <div className="mt-14">
+              <p className="italic font-serif text-sm tracking-[0.14em] text-muted-foreground mb-5">
+                Accounts
               </p>
               {accounts.length === 0 ? (
                 <p className="text-sm text-muted-foreground">
                   口座が登録されていません。<Link href="/settings?tab=accounts" className="underline underline-offset-2 hover:text-foreground transition-colors">設定画面で追加</Link>してください。
                 </p>
               ) : (
-                <div className="space-y-3">
-                  {accountsByKind.map(({ kind, accounts: kindAccounts, total }) => (
-                    <div key={kind} className="rounded-2xl bg-card overflow-hidden">
-                      <div className="flex items-center justify-between px-6 py-4 border-b border-border/50">
-                        <span className="text-xs tracking-wide uppercase text-muted-foreground">
+                <div>
+                  {accountsByKind.map(({ kind, accounts: kindAccounts, total }, groupIndex) => (
+                    <div key={kind} className={cn(groupIndex > 0 && "mt-8")}>
+                      <div className="flex items-baseline justify-between border-b border-border-strong pb-[10px] mb-1.5">
+                        <span className="text-xs tracking-[0.1em] text-muted-foreground">
                           {KIND_LABELS[kind]}
                         </span>
-                        <span className="text-base tabular-nums font-light text-foreground">
+                        <span className="font-serif text-xl tabular-nums text-foreground">
                           {formatCurrency(total)}
                         </span>
                       </div>
                       {kindAccounts.map((account) => (
                         <div
                           key={account.id}
-                          className="flex items-center justify-between px-6 py-3"
+                          className="flex items-center gap-3 py-3.5 border-b border-border"
                         >
-                          <div className="flex items-center gap-3">
-                            <span className="text-base">{account.icon}</span>
-                            <span className="text-sm text-muted-foreground">{account.name}</span>
-                          </div>
-                          <div className="flex items-center gap-3">
-                            <span className={cn("text-sm tabular-nums", account.balance < 0 ? "text-expense" : "text-foreground")}>
-                              {formatCurrency(account.balance)}
-                            </span>
-                            {account.kind === "credit_card" && account.debit_account_id && (monthlyUnpaidByAccount[account.id] ?? 0) > 0 && (
-                              <button
-                                onClick={() => handleDebitTransfer(account)}
-                                disabled={debitTransferring === account.id}
-                                className="text-xs px-3 py-1 rounded-full bg-primary/10 text-primary hover:bg-primary/20 transition-colors disabled:opacity-50"
-                              >
-                                {debitTransferring === account.id ? "処理中..." : "引き落とし"}
-                              </button>
-                            )}
-                          </div>
+                          <span className="text-[15px]">{account.icon}</span>
+                          <span className="flex-1 text-[13.5px] text-foreground">{account.name}</span>
+                          {account.kind === "credit_card" && account.debit_account_id && (monthlyUnpaidByAccount[account.id] ?? 0) > 0 && (
+                            <button
+                              onClick={() => handleDebitTransfer(account)}
+                              disabled={debitTransferring === account.id}
+                              className="text-[11.5px] px-3.5 py-1.5 rounded-full bg-primary/10 text-primary-deep hover:bg-primary/20 transition-colors disabled:opacity-50"
+                            >
+                              {debitTransferring === account.id ? "処理中..." : "引き落とし"}
+                            </button>
+                          )}
+                          <span className="font-serif text-[15px] tabular-nums text-foreground">
+                            {formatCurrency(account.balance)}
+                          </span>
                         </div>
                       ))}
                     </div>

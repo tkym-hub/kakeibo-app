@@ -1,6 +1,7 @@
 "use client"
 
 import { ChevronLeft, ChevronRight } from "lucide-react"
+import { cn } from "@/lib/utils"
 
 interface MonthSelectorProps {
   month: string
@@ -9,7 +10,10 @@ interface MonthSelectorProps {
   size?: "sm" | "lg"
 }
 
-const MONTHS_EN = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"]
+const MONTHS_EN = [
+  "January", "February", "March", "April", "May", "June",
+  "July", "August", "September", "October", "November", "December",
+]
 
 function parseMonth(month: string): { year: string; monthEn: string } | null {
   const match = month.match(/(\d{4})年(\d{1,2})月/)
@@ -22,54 +26,34 @@ function parseMonth(month: string): { year: string; monthEn: string } | null {
 
 export function MonthSelector({ month, onPrevious, onNext, size = "sm" }: MonthSelectorProps) {
   const parsed = parseMonth(month)
-
-  if (size === "lg") {
-    return (
-      <div className="flex items-center gap-1">
-        <button
-          onClick={onPrevious}
-          className="flex h-9 w-7 items-center justify-center rounded-full text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
-          aria-label="Previous month"
-        >
-          <ChevronLeft className="h-4 w-4" />
-        </button>
-        <div className="flex flex-col items-start px-1">
-          <span className="text-2xl font-medium tracking-widest uppercase text-foreground leading-tight">
-            {parsed?.monthEn ?? month}
-          </span>
-          <span className="text-xs text-muted-foreground tabular-nums tracking-wide">
-            {parsed?.year}
-          </span>
-        </div>
-        <button
-          onClick={onNext}
-          className="flex h-9 w-7 items-center justify-center rounded-full text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
-          aria-label="Next month"
-        >
-          <ChevronRight className="h-4 w-4" />
-        </button>
-      </div>
-    )
-  }
+  const isLg = size === "lg"
 
   return (
-    <div className="flex items-center gap-1">
+    <div className="flex items-baseline gap-4">
       <button
         onClick={onPrevious}
-        className="flex h-8 w-8 items-center justify-center rounded-full text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
+        className="text-muted-foreground/80 transition-colors hover:text-foreground"
         aria-label="Previous month"
       >
-        <ChevronLeft className="h-4 w-4" />
+        <ChevronLeft className={cn(isLg ? "h-5 w-5" : "h-4 w-4")} strokeWidth={1.5} />
       </button>
-      <span className="text-xs text-muted-foreground tabular-nums w-16 text-center">
-        {parsed ? `${parsed.monthEn} ${parsed.year}` : month}
+      <span
+        className={cn(
+          "font-serif tracking-[0.04em] text-foreground",
+          isLg ? "text-[34px] leading-none" : "text-xl leading-none"
+        )}
+      >
+        {parsed?.monthEn ?? month}{" "}
+        <span className={cn("text-muted-foreground/90", isLg ? "text-[22px]" : "text-sm")}>
+          {parsed?.year}
+        </span>
       </span>
       <button
         onClick={onNext}
-        className="flex h-8 w-8 items-center justify-center rounded-full text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
+        className="text-muted-foreground/80 transition-colors hover:text-foreground"
         aria-label="Next month"
       >
-        <ChevronRight className="h-4 w-4" />
+        <ChevronRight className={cn(isLg ? "h-5 w-5" : "h-4 w-4")} strokeWidth={1.5} />
       </button>
     </div>
   )

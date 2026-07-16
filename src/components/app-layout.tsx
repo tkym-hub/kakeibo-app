@@ -1,7 +1,7 @@
 "use client"
 
 import { BottomNav } from "./bottom-nav"
-import { SidebarNav } from "./sidebar-nav"
+import { TopNav } from "./top-nav"
 
 interface AppLayoutProps {
   children: React.ReactNode
@@ -10,10 +10,8 @@ interface AppLayoutProps {
 export function AppLayout({ children }: AppLayoutProps) {
   return (
     <div className="min-h-screen bg-background">
-      <SidebarNav />
-      <main className="pb-28 md:pb-0 md:pl-60">
-        <div className="mx-auto max-w-4xl">{children}</div>
-      </main>
+      <TopNav />
+      <main className="pb-28 md:pb-0">{children}</main>
       <BottomNav />
     </div>
   )

@@ -4,9 +4,6 @@ import { useState, useEffect, useRef } from "react"
 import { useRouter } from "next/navigation"
 import Link from "next/link"
 import { AppLayout } from "@/components/app-layout"
-import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import { Textarea } from "@/components/ui/textarea"
 import {
   getCategories,
   getAccounts,
@@ -17,7 +14,6 @@ import {
 import { Category, Account, TransactionType } from "@/lib/types"
 import { supabase } from "@/lib/supabase"
 import { cn } from "@/lib/utils"
-import { Calendar } from "lucide-react"
 
 export default function AddTransactionPage() {
   const router = useRouter()
@@ -210,121 +206,167 @@ export default function AddTransactionPage() {
     }
   }
 
+  const amountColor = isTransfer
+    ? "text-muted-foreground"
+    : type === "income"
+    ? "text-primary"
+    : "text-foreground"
+
   return (
     <AppLayout>
-      <div className="px-5 py-8 md:px-10 md:py-12">
+      <div className="max-w-[640px] mx-auto px-6 md:px-10 pt-10 pb-16 md:pt-12 md:pb-[72px]">
         {/* Header */}
-        <header className="mb-10">
-          <p className="text-xs tracking-widest uppercase text-muted-foreground mb-2">
-            Add Entry
-          </p>
-          <h1 className="text-2xl font-medium tracking-tight text-foreground md:text-3xl">
-            新規追加
-          </h1>
-        </header>
+        <p className="text-center italic font-serif text-[13px] md:text-sm tracking-[0.14em] text-muted-foreground mb-8 md:mb-10">
+          Add Entry
+        </p>
 
-        <div className="w-full max-w-[1034px] space-y-8">
-          {/* Amount Input */}
-          <div className="text-center py-8">
-            <div className="flex items-baseline justify-center gap-2">
-              <span className="text-2xl text-muted-foreground/50">¥</span>
-              <input
-                type="text"
-                inputMode="numeric"
-                value={formattedAmount}
-                onChange={(e) => handleAmountChange(e.target.value)}
-                className={cn(
-                  "text-5xl md:text-6xl font-light tracking-tight text-center bg-transparent border-none outline-none w-full tabular-nums",
-                  type === "income"
-                    ? "text-income"
-                    : type === "transfer"
-                    ? "text-muted-foreground"
-                    : "text-foreground"
-                )}
-                placeholder="0"
-              />
-            </div>
+        {/* Amount Block */}
+        <div className="text-center border-b border-border-strong pb-6 md:pb-8">
+          <div className="inline-flex items-baseline justify-center gap-2 md:gap-2.5">
+            <span className="font-serif font-light text-xl md:text-[28px] text-muted-foreground">
+              ¥
+            </span>
+            <input
+              type="text"
+              inputMode="numeric"
+              value={formattedAmount}
+              onChange={(e) => handleAmountChange(e.target.value)}
+              placeholder="0"
+              className={cn(
+                "font-serif font-light text-5xl md:text-[80px] leading-none tracking-[-0.015em] text-center bg-transparent border-none outline-none tabular-nums w-[8ch]",
+                amountColor
+              )}
+            />
           </div>
+        </div>
 
-          {/* Type Toggle */}
-          <div className="flex rounded-full bg-muted p-1">
-            <button
-              onClick={() => handleTypeChange("expense")}
-              className={cn(
-                "flex-1 py-2.5 rounded-full text-sm transition-all",
-                type === "expense"
-                  ? "bg-card text-foreground shadow-sm"
-                  : "text-muted-foreground"
-              )}
-            >
-              支出
-            </button>
-            <button
-              onClick={() => handleTypeChange("income")}
-              className={cn(
-                "flex-1 py-2.5 rounded-full text-sm transition-all",
-                type === "income"
-                  ? "bg-card text-foreground shadow-sm"
-                  : "text-muted-foreground"
-              )}
-            >
-              収入
-            </button>
-            <button
-              onClick={() => handleTypeChange("transfer")}
-              className={cn(
-                "flex-1 py-2.5 rounded-full text-sm transition-all",
-                type === "transfer"
-                  ? "bg-card text-foreground shadow-sm"
-                  : "text-muted-foreground"
-              )}
-            >
-              振替
-            </button>
-          </div>
+        {/* Type Tabs */}
+        <div className="flex justify-center gap-8 md:gap-11 py-5 border-b border-border text-sm">
+          <button
+            onClick={() => handleTypeChange("expense")}
+            className={cn(
+              "pb-[5px]",
+              type === "expense"
+                ? "font-medium border-b-[1.5px] border-primary text-foreground"
+                : "text-muted-foreground"
+            )}
+          >
+            支出
+          </button>
+          <button
+            onClick={() => handleTypeChange("income")}
+            className={cn(
+              "pb-[5px]",
+              type === "income"
+                ? "font-medium border-b-[1.5px] border-primary text-foreground"
+                : "text-muted-foreground"
+            )}
+          >
+            収入
+          </button>
+          <button
+            onClick={() => handleTypeChange("transfer")}
+            className={cn(
+              "pb-[5px]",
+              type === "transfer"
+                ? "font-medium border-b-[1.5px] border-primary text-foreground"
+                : "text-muted-foreground"
+            )}
+          >
+            振替
+          </button>
+        </div>
 
-          {/* Category Selection (非表示 when transfer) */}
-          {!isTransfer && (
-            <div>
-              <p className="text-xs tracking-wide uppercase text-muted-foreground mb-4">
-                カテゴリ
+        {/* Category Selection (非表示 when transfer) */}
+        {!isTransfer && (
+          <div className="mt-10">
+            <p className="text-[11px] tracking-[0.12em] text-muted-foreground mb-4">
+              カテゴリ
+            </p>
+            {filteredCategories.length === 0 ? (
+              <p className="text-sm text-muted-foreground">
+                カテゴリがありません。設定画面で追加してください。
               </p>
-              {filteredCategories.length === 0 ? (
-                <p className="text-sm text-muted-foreground">
-                  カテゴリがありません。設定画面で追加してください。
-                </p>
-              ) : (
-                <div className="grid grid-cols-4 gap-2">
-                  {filteredCategories.map((category) => (
-                    <button
-                      key={category.id}
-                      onClick={() => setSelectedCategory(category.id)}
+            ) : (
+              <div className="grid grid-cols-4 gap-2">
+                {filteredCategories.map((category) => (
+                  <button
+                    key={category.id}
+                    onClick={() => setSelectedCategory(category.id)}
+                    className={cn(
+                      "flex flex-col items-center justify-center gap-1.5 py-3.5 px-2 rounded-[6px] border transition-colors",
+                      selectedCategory === category.id
+                        ? "border-primary bg-primary/5"
+                        : "border-transparent"
+                    )}
+                  >
+                    <span className="text-[19px]">{category.icon}</span>
+                    <span
                       className={cn(
-                        "flex flex-col items-center justify-center p-3 rounded-2xl transition-all",
+                        "text-[11.5px] truncate w-full text-center",
                         selectedCategory === category.id
-                          ? "bg-card ring-1 ring-border shadow-sm"
-                          : "hover:bg-muted/50"
+                          ? "font-medium text-foreground"
+                          : "text-muted-foreground"
                       )}
                     >
-                      <span className="text-xl mb-1.5">{category.icon}</span>
-                      <span className="text-[11px] text-muted-foreground truncate w-full text-center">
-                        {category.name}
-                      </span>
-                    </button>
-                  ))}
-                </div>
-              )}
+                      {category.name}
+                    </span>
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Account Selection */}
+        <div className="mt-9">
+          <p className="text-[11px] tracking-[0.12em] text-muted-foreground mb-3.5">
+            {isTransfer ? "送金元口座" : "口座"}
+          </p>
+          {accounts.length === 0 ? (
+            <p className="text-sm text-muted-foreground">
+              口座がありません。
+              <Link
+                href="/settings?tab=accounts"
+                className="underline underline-offset-2 hover:text-foreground transition-colors"
+              >
+                設定画面で追加
+              </Link>
+              してください。
+            </p>
+          ) : (
+            <div className="flex flex-wrap gap-2.5">
+              {accounts.map((account) => (
+                <button
+                  key={account.id}
+                  onClick={() => {
+                    setSelectedAccount(account.id)
+                    if (toAccount === account.id) setToAccount("")
+                  }}
+                  className={cn(
+                    "flex items-center gap-2 px-[18px] py-[9px] rounded-full text-[13px] border transition-colors",
+                    selectedAccount === account.id
+                      ? "border-border-strong font-medium text-foreground"
+                      : "border-border-mid text-muted-foreground"
+                  )}
+                >
+                  <span className="text-base">{account.icon}</span>
+                  {account.name}
+                </button>
+              ))}
             </div>
           )}
+        </div>
 
-          {/* Account Selection */}
-          <div>
-            <p className="text-xs tracking-wide uppercase text-muted-foreground mb-4">
-              {isTransfer ? "送金元口座" : "口座"}
+        {/* To Account Selection (transfer のみ) */}
+        {isTransfer && (
+          <div className="mt-9">
+            <p className="text-[11px] tracking-[0.12em] text-muted-foreground mb-3.5">
+              振込先口座
             </p>
-            {accounts.length === 0 ? (
+            {accounts.length <= 1 ? (
               <p className="text-sm text-muted-foreground">
-                口座がありません。
+                振替には2つ以上の口座が必要です。
                 <Link
                   href="/settings?tab=accounts"
                   className="underline underline-offset-2 hover:text-foreground transition-colors"
@@ -334,77 +376,38 @@ export default function AddTransactionPage() {
                 してください。
               </p>
             ) : (
-              <div className="flex flex-wrap gap-2">
-                {accounts.map((account) => (
-                  <button
-                    key={account.id}
-                    onClick={() => {
-                      setSelectedAccount(account.id)
-                      if (toAccount === account.id) setToAccount("")
-                    }}
-                    className={cn(
-                      "flex items-center gap-2 px-4 py-2.5 rounded-full text-sm transition-all",
-                      selectedAccount === account.id
-                        ? "bg-card ring-1 ring-border shadow-sm text-foreground"
-                        : "text-muted-foreground hover:bg-muted/50"
-                    )}
-                  >
-                    <span className="text-base">{account.icon}</span>
-                    {account.name}
-                  </button>
-                ))}
+              <div className="flex flex-wrap gap-2.5">
+                {accounts
+                  .filter((account) => account.id !== selectedAccount)
+                  .map((account) => (
+                    <button
+                      key={account.id}
+                      onClick={() => setToAccount(account.id)}
+                      className={cn(
+                        "flex items-center gap-2 px-[18px] py-[9px] rounded-full text-[13px] border transition-colors",
+                        toAccount === account.id
+                          ? "border-border-strong font-medium text-foreground"
+                          : "border-border-mid text-muted-foreground"
+                      )}
+                    >
+                      <span className="text-base">{account.icon}</span>
+                      {account.name}
+                    </button>
+                  ))}
               </div>
             )}
           </div>
+        )}
 
-          {/* To Account Selection (transfer のみ) */}
-          {isTransfer && (
-            <div>
-              <p className="text-xs tracking-wide uppercase text-muted-foreground mb-4">
-                振込先口座
-              </p>
-              {accounts.length <= 1 ? (
-                <p className="text-sm text-muted-foreground">
-                  振替には2つ以上の口座が必要です。
-                  <Link
-                    href="/settings?tab=accounts"
-                    className="underline underline-offset-2 hover:text-foreground transition-colors"
-                  >
-                    設定画面で追加
-                  </Link>
-                  してください。
-                </p>
-              ) : (
-                <div className="flex flex-wrap gap-2">
-                  {accounts
-                    .filter((account) => account.id !== selectedAccount)
-                    .map((account) => (
-                      <button
-                        key={account.id}
-                        onClick={() => setToAccount(account.id)}
-                        className={cn(
-                          "flex items-center gap-2 px-4 py-2.5 rounded-full text-sm transition-all",
-                          toAccount === account.id
-                            ? "bg-card ring-1 ring-border shadow-sm text-foreground"
-                            : "text-muted-foreground hover:bg-muted/50"
-                        )}
-                      >
-                        <span className="text-base">{account.icon}</span>
-                        {account.name}
-                      </button>
-                    ))}
-                </div>
-              )}
-            </div>
-          )}
-
+        {/* Name + Date */}
+        <div className="mt-10 grid grid-cols-1 md:grid-cols-[1fr_220px] gap-6 md:gap-10">
           {/* Name（履歴サジェスト付き） */}
           <div>
-            <p className="text-xs tracking-wide uppercase text-muted-foreground mb-4">
+            <p className="text-[11px] tracking-[0.12em] text-muted-foreground mb-1.5">
               品目名
             </p>
             <div ref={nameContainerRef} className="relative">
-              <Input
+              <input
                 type="text"
                 value={name}
                 onChange={(e) => handleNameChange(e.target.value)}
@@ -414,10 +417,10 @@ export default function AddTransactionPage() {
                   }
                 }}
                 placeholder="例：ランチ、スーパー"
-                className="h-12 rounded-xl bg-muted/30 border-0 text-foreground placeholder:text-muted-foreground/50"
+                className="w-full py-2.5 border-b border-input bg-transparent outline-none text-[14.5px] text-foreground placeholder:text-muted-foreground/70"
               />
               {showSuggestions && filteredSuggestions.length > 0 && (
-                <div className="absolute top-full left-0 right-0 mt-1 z-50 rounded-xl bg-card border border-border shadow-md overflow-hidden">
+                <div className="absolute top-full left-0 right-0 mt-1 z-50 rounded-md bg-card border border-border shadow-md overflow-hidden">
                   {filteredSuggestions.map((s, i) => (
                     <button
                       key={i}
@@ -439,70 +442,74 @@ export default function AddTransactionPage() {
 
           {/* Date */}
           <div>
-            <p className="text-xs tracking-wide uppercase text-muted-foreground mb-4">
+            <p className="text-[11px] tracking-[0.12em] text-muted-foreground mb-1.5">
               日付
             </p>
-            <div className="relative">
-              <Calendar className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-              <Input
-                type="date"
-                value={date}
-                onChange={(e) => setDate(e.target.value)}
-                className="pl-11 h-12 rounded-xl bg-muted/30 border-0 text-foreground"
-              />
-            </div>
-          </div>
-
-          {/* Memo */}
-          <div>
-            <p className="text-xs tracking-wide uppercase text-muted-foreground mb-4">
-              メモ
-            </p>
-            <Textarea
-              value={memo}
-              onChange={(e) => setMemo(e.target.value)}
-              placeholder="メモを入力..."
-              className="min-h-20 rounded-xl bg-muted/30 border-0 resize-none text-foreground placeholder:text-muted-foreground/50"
+            <input
+              type="date"
+              value={date}
+              onChange={(e) => setDate(e.target.value)}
+              className="w-full py-2.5 border-b border-input bg-transparent outline-none font-serif text-[15px] text-foreground"
             />
           </div>
-
-          {savedMessage && (
-            <p className="text-sm text-income text-center">{savedMessage}</p>
-          )}
-          {error && <p className="text-sm text-destructive">{error}</p>}
-
-          {/* 続けて入力する + 保存ボタン */}
-          <div className="space-y-4">
-            <div className="flex items-center justify-center gap-3">
-              <button
-                type="button"
-                role="switch"
-                aria-checked={continuousMode}
-                onClick={() => setContinuousMode(!continuousMode)}
-                className={cn(
-                  "relative inline-flex h-5 w-9 flex-shrink-0 items-center rounded-full transition-colors",
-                  continuousMode ? "bg-foreground" : "bg-muted"
-                )}
-              >
-                <span
-                  className={cn(
-                    "inline-block h-4 w-4 transform rounded-full bg-background transition-transform",
-                    continuousMode ? "translate-x-4" : "translate-x-0.5"
-                  )}
-                />
-              </button>
-              <span className="text-sm text-muted-foreground">続けて入力する</span>
-            </div>
-
-            <Button
-              onClick={handleSubmit}
-              disabled={isSubmitDisabled}
-              className="w-full h-14 rounded-full text-base"
-            >
-              {saving ? "保存中..." : "保存する"}
-            </Button>
-          </div>
         </div>
+
+        {/* Memo */}
+        <div className="mt-8">
+          <p className="text-[11px] tracking-[0.12em] text-muted-foreground mb-1.5">
+            メモ
+          </p>
+          <textarea
+            value={memo}
+            onChange={(e) => setMemo(e.target.value)}
+            placeholder="メモを入力..."
+            rows={1}
+            onInput={(e) => {
+              const el = e.currentTarget
+              el.style.height = "auto"
+              el.style.height = `${el.scrollHeight}px`
+            }}
+            className="w-full py-2.5 border-b border-input bg-transparent outline-none resize-none overflow-hidden text-sm text-foreground placeholder:text-muted-foreground"
+          />
+        </div>
+
+        {savedMessage && (
+          <p className="text-sm text-primary text-center mt-6">{savedMessage}</p>
+        )}
+        {error && (
+          <p className="text-sm text-destructive text-center mt-6">{error}</p>
+        )}
+
+        {/* 続けて入力する */}
+        <div className="mt-11 mb-5 flex items-center justify-center gap-2.5">
+          <button
+            type="button"
+            role="switch"
+            aria-checked={continuousMode}
+            onClick={() => setContinuousMode(!continuousMode)}
+            className={cn(
+              "relative inline-flex h-[19px] w-[34px] flex-shrink-0 items-center rounded-full transition-colors",
+              continuousMode ? "bg-panel" : "bg-muted"
+            )}
+          >
+            <span
+              className={cn(
+                "inline-block h-[15px] w-[15px] transform rounded-full bg-white shadow-sm transition-transform",
+                continuousMode ? "translate-x-[17px]" : "translate-x-[2px]"
+              )}
+            />
+          </button>
+          <span className="text-[13px] text-muted-foreground">続けて入力する</span>
+        </div>
+
+        {/* 保存ボタン */}
+        <button
+          onClick={handleSubmit}
+          disabled={isSubmitDisabled}
+          className="w-full h-[52px] rounded-full bg-panel text-panel-foreground text-[14.5px] tracking-[0.08em] flex items-center justify-center disabled:opacity-50 transition-opacity"
+        >
+          {saving ? "保存中..." : "保存する"}
+        </button>
       </div>
     </AppLayout>
   )
