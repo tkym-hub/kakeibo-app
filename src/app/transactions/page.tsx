@@ -165,39 +165,56 @@ export default function TransactionsPage() {
     ? new Intl.NumberFormat("ja-JP").format(parseInt(editAmount))
     : ""
 
+  const summaryCount = filteredTransactions.length
+  const summaryExpense = filteredTransactions
+    .filter((t) => t.type === "expense")
+    .reduce((sum, t) => sum + t.amount, 0)
+  const summaryIncome = filteredTransactions
+    .filter((t) => t.type === "income")
+    .reduce((sum, t) => sum + t.amount, 0)
+
+  function formatDateGroup(dateString: string): { md: string; dow: string } {
+    const date = new Date(dateString + "T00:00:00")
+    const md = new Intl.DateTimeFormat("ja-JP", { month: "numeric", day: "numeric" }).format(date)
+    const dow = new Intl.DateTimeFormat("en-US", { weekday: "short" }).format(date).toUpperCase()
+    return { md, dow }
+  }
+
   return (
     <AppLayout>
-      <div className="px-5 py-8 md:px-10 md:py-12">
+      <div className="max-w-[880px] mx-auto px-5 pt-8 pb-16 md:px-10 md:pt-12 md:pb-[72px]">
         {/* Header */}
-        <header className="mb-10">
-          <p className="text-xs tracking-widest uppercase text-muted-foreground mb-2">History</p>
-          <div className="flex items-center justify-between">
+        <header className="mb-3">
+          <p className="italic font-serif text-[13px] tracking-[0.12em] text-muted-foreground mb-3">
+            History
+          </p>
+          <div className="flex items-end justify-between gap-4">
             <MonthSelector
               month={currentMonth}
               onPrevious={() => setCurrentMonth(shiftMonth(currentMonth, -1))}
               onNext={() => setCurrentMonth(shiftMonth(currentMonth, 1))}
               size="lg"
             />
-            <div className="flex items-center gap-1">
+            <div className="flex items-center gap-2">
               <button
                 onClick={() => setSortOrder((o) => o === "desc" ? "asc" : "desc")}
-                className="flex h-8 items-center gap-1.5 rounded-full px-3 text-xs text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
+                className="flex items-center gap-1.5 rounded-full border border-border-mid px-3.5 py-[7px] text-xs text-muted-foreground hover:text-foreground transition-colors"
                 aria-label="並び替え"
               >
-                <ArrowUpDown className="h-3.5 w-3.5" />
+                <ArrowUpDown className="h-3 w-3" />
                 <span className="hidden md:inline">{sortOrder === "desc" ? "新しい順" : "古い順"}</span>
               </button>
               <button
                 onClick={() => setShowFilters(!showFilters)}
                 className={cn(
-                  "flex h-8 items-center gap-1.5 rounded-full px-3 text-xs transition-colors",
+                  "flex items-center gap-1.5 rounded-full border px-3.5 py-[7px] text-xs transition-colors",
                   showFilters || hasActiveFilters
-                    ? "bg-foreground text-background"
-                    : "text-muted-foreground hover:text-foreground hover:bg-muted"
+                    ? "border-foreground text-foreground"
+                    : "border-border-mid text-muted-foreground hover:text-foreground"
                 )}
                 aria-label="絞り込み"
               >
-                <SlidersHorizontal className="h-3.5 w-3.5" />
+                <SlidersHorizontal className="h-3 w-3" />
                 <span className="hidden md:inline">絞り込み</span>
               </button>
             </div>
@@ -206,7 +223,7 @@ export default function TransactionsPage() {
 
         {/* Filters */}
         {showFilters && (
-          <div className="mb-8 rounded-2xl bg-card p-5">
+          <div className="mb-8 mt-4 border border-border rounded-md p-5">
             <div className="flex items-center justify-between mb-4">
               <p className="text-xs tracking-wide uppercase text-muted-foreground">絞り込み</p>
               {hasActiveFilters && (
@@ -222,7 +239,7 @@ export default function TransactionsPage() {
               <div className="space-y-1.5">
                 <p className="text-[10px] tracking-wide uppercase text-muted-foreground px-1">種類</p>
                 <Select value={typeFilter} onValueChange={setTypeFilter}>
-                  <SelectTrigger className="rounded-xl border-0 bg-muted/50">
+                  <SelectTrigger className="rounded-md border-border bg-transparent">
                     <SelectValue placeholder="すべて" />
                   </SelectTrigger>
                   <SelectContent>
@@ -235,7 +252,7 @@ export default function TransactionsPage() {
               <div className="space-y-1.5">
                 <p className="text-[10px] tracking-wide uppercase text-muted-foreground px-1">カテゴリ</p>
                 <Select value={categoryFilter} onValueChange={setCategoryFilter}>
-                  <SelectTrigger className="rounded-xl border-0 bg-muted/50">
+                  <SelectTrigger className="rounded-md border-border bg-transparent">
                     <SelectValue placeholder="すべて" />
                   </SelectTrigger>
                   <SelectContent>
@@ -249,7 +266,7 @@ export default function TransactionsPage() {
               <div className="space-y-1.5">
                 <p className="text-[10px] tracking-wide uppercase text-muted-foreground px-1">口座</p>
                 <Select value={accountFilter} onValueChange={setAccountFilter}>
-                  <SelectTrigger className="rounded-xl border-0 bg-muted/50">
+                  <SelectTrigger className="rounded-md border-border bg-transparent">
                     <SelectValue placeholder="すべて" />
                   </SelectTrigger>
                   <SelectContent>
@@ -264,45 +281,44 @@ export default function TransactionsPage() {
           </div>
         )}
 
+        {/* Summary row */}
+        <p className="text-xs text-muted-foreground mt-4 mb-9">
+          {summaryCount}件 ・ 支出 <span className="font-serif text-[13px]">{formatCurrency(summaryExpense)}</span> ・ 収入 <span className="font-serif text-[13px]">{formatCurrency(summaryIncome)}</span>
+        </p>
+
         {loading ? (
           <div className="text-center py-20 text-muted-foreground text-sm">読み込み中...</div>
         ) : (
           <>
-            <div className="space-y-6">
-              {Array.from(groupedTransactions.entries()).map(([date, dayTransactions]) => (
-                <div key={date}>
-                  <p className="text-xs tracking-wide text-muted-foreground mb-3 px-1">
-                    {formatDate(date)}
-                  </p>
-                  <div className="rounded-2xl bg-card divide-y divide-border/50">
-                    {dayTransactions.map((transaction) => (
-                      <div
-                        key={transaction.id}
-                        className="flex items-center justify-between px-5 py-4"
-                      >
-                        <div className="flex items-center gap-4">
-                          <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-muted/50 text-base">
+            <div className="flex flex-col gap-9">
+              {Array.from(groupedTransactions.entries()).map(([date, dayTransactions]) => {
+                const { md, dow } = formatDateGroup(date)
+                return (
+                  <div key={date}>
+                    <p className="font-serif text-[13px] tracking-[0.1em] text-muted-foreground border-b border-border-strong pb-2 mb-1">
+                      {md} <span className="text-[11px]">{dow}</span>
+                    </p>
+                    <div>
+                      {dayTransactions.map((transaction) => (
+                        <div
+                          key={transaction.id}
+                          className="flex items-center gap-3.5 py-[15px] border-b border-border"
+                        >
+                          <div className="text-base leading-none">
                             {transaction.icon ?? "📦"}
                           </div>
-                          <div>
-                            <p className="text-sm font-medium text-foreground">
+                          <div className="flex-1 min-w-0">
+                            <p className="text-sm text-foreground truncate">
                               {transaction.name || transaction.category}
                             </p>
-                            <p className="text-xs text-muted-foreground mt-0.5">
-                              {transaction.name && `${transaction.category} · `}
+                            <p className="text-[11.5px] text-muted-foreground mt-0.5 truncate">
+                              {transaction.name && `${transaction.category} ・ `}
                               {transaction.account}
                             </p>
-                            {transaction.memo && (
-                              <p className="text-xs text-muted-foreground/70 mt-0.5">
-                                {transaction.memo}
-                              </p>
-                            )}
                           </div>
-                        </div>
-                        <div className="flex items-center gap-2">
                           <span
                             className={cn(
-                              "text-sm tabular-nums",
+                              "font-serif text-base tabular-nums whitespace-nowrap",
                               transaction.type === "income" ? "text-income" : "text-foreground"
                             )}
                           >
@@ -311,7 +327,7 @@ export default function TransactionsPage() {
                           </span>
                           <DropdownMenu>
                             <DropdownMenuTrigger asChild>
-                              <button className="p-1.5 text-muted-foreground hover:text-foreground transition-colors rounded-lg hover:bg-muted">
+                              <button className="ml-2 text-muted-foreground/70 tracking-[2px] hover:text-foreground transition-colors">
                                 <MoreHorizontal className="h-4 w-4" />
                               </button>
                             </DropdownMenuTrigger>
@@ -327,11 +343,11 @@ export default function TransactionsPage() {
                             </DropdownMenuContent>
                           </DropdownMenu>
                         </div>
-                      </div>
-                    ))}
+                      ))}
+                    </div>
                   </div>
-                </div>
-              ))}
+                )
+              })}
             </div>
 
             {groupedTransactions.size === 0 && (

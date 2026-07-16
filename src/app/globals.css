@@ -6,7 +6,7 @@
 :root {
   --background: oklch(0.985 0.002 90);
   --foreground: oklch(0.18 0.01 260);
-  --card: oklch(1 0 0);
+  --card: oklch(0.985 0.002 90);
   --card-foreground: oklch(0.18 0.01 260);
   --popover: oklch(1 0 0);
   --popover-foreground: oklch(0.18 0.01 260);
@@ -20,15 +20,21 @@
   --accent-foreground: oklch(1 0 0);
   --destructive: oklch(0.58 0.12 18);
   --destructive-foreground: oklch(1 0 0);
-  --border: oklch(0.95 0.002 90);
-  --input: oklch(0.97 0.002 90);
+  --border: oklch(0.94 0.002 90);
+  --border-mid: oklch(0.92 0.003 90);
+  --border-strong: oklch(0.18 0.01 260);
+  --input: oklch(0.88 0.004 90);
   --ring: oklch(0.52 0.065 160);
+  --panel: oklch(0.34 0.05 162);
+  --panel-foreground: oklch(0.97 0.008 95);
+  --primary-deep: oklch(0.4 0.06 160);
+  --leader: oklch(0.8 0.008 260);
   --chart-1: oklch(0.52 0.065 160);
   --chart-2: oklch(0.62 0.05 160);
   --chart-3: oklch(0.72 0.04 160);
   --chart-4: oklch(0.82 0.025 160);
   --chart-5: oklch(0.42 0.05 160);
-  --radius: 1rem;
+  --radius: 0.375rem;
   --sidebar: oklch(1 0 0);
   --sidebar-foreground: oklch(0.18 0.01 260);
   --sidebar-primary: oklch(0.52 0.065 160);
@@ -60,8 +66,12 @@
   --destructive: oklch(0.396 0.141 25.723);
   --destructive-foreground: oklch(0.637 0.237 25.331);
   --border: oklch(0.269 0 0);
+  --border-mid: oklch(0.3 0 0);
+  --border-strong: oklch(0.985 0 0);
   --input: oklch(0.269 0 0);
   --ring: oklch(0.439 0 0);
+  --panel: oklch(0.34 0.05 162);
+  --panel-foreground: oklch(0.97 0.008 95);
   --chart-1: oklch(0.488 0.243 264.376);
   --chart-2: oklch(0.696 0.17 162.48);
   --chart-3: oklch(0.769 0.188 70.08);
@@ -79,6 +89,8 @@
 
 @theme inline {
   --font-sans: var(--font-noto-sans-jp), 'Hiragino Sans', 'Hiragino Kaku Gothic ProN', 'Noto Sans JP', sans-serif;
+  --font-serif: var(--font-newsreader), 'Newsreader', Georgia, serif;
+  --font-serif-jp: var(--font-noto-serif-jp), 'Noto Serif JP', serif;
   --font-mono: 'Geist Mono', 'Geist Mono Fallback';
   --color-income: var(--income);
   --color-expense: var(--expense);
@@ -100,6 +112,12 @@
   --color-destructive: var(--destructive);
   --color-destructive-foreground: var(--destructive-foreground);
   --color-border: var(--border);
+  --color-border-mid: var(--border-mid);
+  --color-border-strong: var(--border-strong);
+  --color-panel: var(--panel);
+  --color-panel-foreground: var(--panel-foreground);
+  --color-primary-deep: var(--primary-deep);
+  --color-leader: var(--leader);
   --color-input: var(--input);
   --color-ring: var(--ring);
   --color-chart-1: var(--chart-1);

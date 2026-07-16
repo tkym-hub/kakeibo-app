@@ -1,5 +1,5 @@
 import type { Metadata, Viewport } from 'next'
-import { Noto_Sans_JP } from 'next/font/google'
+import { Newsreader, Noto_Sans_JP, Noto_Serif_JP } from 'next/font/google'
 import './globals.css'
 import { ServiceWorkerRegister } from '@/components/service-worker-register'
 
@@ -9,13 +9,26 @@ const notoSansJP = Noto_Sans_JP({
   variable: "--font-noto-sans-jp",
 })
 
+const newsreader = Newsreader({
+  subsets: ["latin"],
+  weight: ["200", "300", "400", "500"],
+  style: ["normal", "italic"],
+  variable: "--font-newsreader",
+})
+
+const notoSerifJP = Noto_Serif_JP({
+  subsets: ["latin"],
+  weight: ["400", "500"],
+  variable: "--font-noto-serif-jp",
+})
+
 export const metadata: Metadata = {
-  title: '家計簿 | シンプルな家計管理',
+  title: 'Okane | シンプルな家計管理',
   description: 'シンプルで使いやすい家計簿アプリ。収支管理をもっと簡単に。',
   appleWebApp: {
     capable: true,
     statusBarStyle: 'default',
-    title: '家計簿',
+    title: 'Okane',
   },
   manifest: '/manifest.webmanifest',
 }
@@ -35,7 +48,7 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="ja">
-      <body className={`${notoSansJP.variable} font-sans antialiased`}>
+      <body className={`${notoSansJP.variable} ${newsreader.variable} ${notoSerifJP.variable} font-sans antialiased`}>
         <ServiceWorkerRegister />
         {children}
       </body>

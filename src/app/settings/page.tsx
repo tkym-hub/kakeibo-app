@@ -9,7 +9,6 @@ import { formatCurrency, getCurrentMonth } from "@/lib/data"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { cn } from "@/lib/utils"
-import { Pencil, Trash2, Tags, Wallet, CalendarClock } from "lucide-react"
 import {
   Dialog,
   DialogContent,
@@ -34,9 +33,9 @@ function isValidDayOfMonth(value: string): boolean {
 }
 
 const tabs = [
-  { id: "categories" as const, label: "カテゴリ", icon: Tags },
-  { id: "accounts" as const, label: "口座", icon: Wallet },
-  { id: "templates" as const, label: "固定費", icon: CalendarClock },
+  { id: "categories" as const, label: "カテゴリ" },
+  { id: "accounts" as const, label: "口座" },
+  { id: "templates" as const, label: "固定費" },
 ]
 
 export default function SettingsPage() {
@@ -333,30 +332,86 @@ export default function SettingsPage() {
   const expenseCategories = categories.filter((c) => c.type === "expense")
   const tplFilteredCategories = categories.filter((c) => c.type === newTplType)
 
+  // 見出し行（ラベル + 濃罫線下線 + 右に任意のアクション要素）
+  function SectionHeader({ label, action }: { label: string; action?: React.ReactNode }) {
+    return (
+      <div className="flex items-baseline justify-between border-b border-border-strong pb-2.5">
+        <p className="text-xs tracking-[0.1em] text-muted-foreground">{label}</p>
+        {action}
+      </div>
+    )
+  }
+
+  // 「＋ 追加」テキストリンク（Dialogトリガーの見た目）
+  function AddLink({ children }: { children: React.ReactNode }) {
+    return (
+      <span className="text-xs text-primary-deep hover:opacity-80 transition-opacity cursor-pointer">
+        {children}
+      </span>
+    )
+  }
+
+  // リスト行（アイコン/名称/バッジ/サブテキスト/金額/編集・削除リンク）薄罫線区切り
+  function ListRow({
+    icon,
+    title,
+    badge,
+    subtitle,
+    amount,
+    onEdit,
+    onDelete,
+  }: {
+    icon: string
+    title: string
+    badge?: string
+    subtitle?: string
+    amount?: string
+    onEdit: () => void
+    onDelete: () => void
+  }) {
+    return (
+      <div className="flex items-center gap-3 py-[15px] border-b border-border">
+        <span className="text-[15px]">{icon}</span>
+        <div className="flex-1 min-w-0">
+          <span className="text-[13.5px] text-foreground">{title}</span>
+          {badge && (
+            <span className="ml-2 text-[10.5px] text-muted-foreground border border-border-mid rounded-[4px] px-[7px] py-[2px] align-middle">
+              {badge}
+            </span>
+          )}
+          {subtitle && <p className="mt-0.5 text-[11px] text-muted-foreground">{subtitle}</p>}
+        </div>
+        {amount && (
+          <span className="font-serif text-[15px] text-foreground tabular-nums whitespace-nowrap">{amount}</span>
+        )}
+        <button
+          onClick={onEdit}
+          className="text-[11.5px] text-muted-foreground hover:text-foreground transition-colors whitespace-nowrap"
+        >
+          編集
+        </button>
+        <button
+          onClick={onDelete}
+          className="ml-4 text-[11.5px] text-muted-foreground hover:text-destructive transition-colors whitespace-nowrap"
+        >
+          削除
+        </button>
+      </div>
+    )
+  }
+
   function CategoryList({ cats }: { cats: Category[] }) {
     return (
-      <div className="rounded-2xl bg-card divide-y divide-border/50">
+      <div>
         {cats.map((category) => (
-          <div key={category.id} className="flex items-center justify-between px-5 py-4">
-            <div className="flex items-center gap-3">
-              <span className="text-lg">{category.icon}</span>
-              <span className="text-sm text-foreground">{category.name}</span>
-            </div>
-            <div className="flex items-center gap-1">
-              <button
-                onClick={() => { setEditingCategory(category); setEditCategoryName(category.name); setEditCategoryIcon(category.icon); setEditCategoryIsFixed(category.is_fixed) }}
-                className="p-2 text-muted-foreground hover:text-foreground transition-colors"
-              >
-                <Pencil className="h-4 w-4" />
-              </button>
-              <button
-                onClick={() => setDeletingItem({ kind: "category", id: category.id, name: category.name })}
-                className="p-2 text-muted-foreground hover:text-destructive transition-colors"
-              >
-                <Trash2 className="h-4 w-4" />
-              </button>
-            </div>
-          </div>
+          <ListRow
+            key={category.id}
+            icon={category.icon}
+            title={category.name}
+            badge={category.is_fixed ? "固定費" : undefined}
+            onEdit={() => { setEditingCategory(category); setEditCategoryName(category.name); setEditCategoryIcon(category.icon); setEditCategoryIsFixed(category.is_fixed) }}
+            onDelete={() => setDeletingItem({ kind: "category", id: category.id, name: category.name })}
+          />
         ))}
       </div>
     )
@@ -364,43 +419,40 @@ export default function SettingsPage() {
 
   return (
     <AppLayout>
-      <div className="px-5 py-8 md:px-10 md:py-12">
-        <header className="mb-10">
-          <p className="text-xs tracking-widest uppercase text-muted-foreground mb-2">Preferences</p>
-          <h1 className="text-2xl font-medium tracking-tight text-foreground md:text-3xl">設定</h1>
+      <div className="max-w-[760px] mx-auto px-6 md:px-10 pt-10 pb-16 md:pt-12 md:pb-[88px]">
+        <header className="mb-9">
+          <h1 className="font-serif text-[28px] md:text-[34px] text-foreground">Settings</h1>
         </header>
 
-        <div className="flex gap-1 mb-8 rounded-full bg-muted p-1 max-w-fit">
-          {tabs.map((tab) => {
-            const Icon = tab.icon
-            return (
-              <button
-                key={tab.id}
-                onClick={() => setActiveTab(tab.id)}
-                className={cn(
-                  "flex items-center gap-2 px-5 py-2 rounded-full text-sm transition-all",
-                  activeTab === tab.id ? "bg-card text-foreground shadow-sm" : "text-muted-foreground"
-                )}
-              >
-                <Icon className="h-4 w-4" />
-                {tab.label}
-              </button>
-            )
-          })}
+        <div className="flex gap-9 border-b border-border text-sm mb-11">
+          {tabs.map((tab) => (
+            <button
+              key={tab.id}
+              onClick={() => setActiveTab(tab.id)}
+              className={cn(
+                "-mb-px pb-3 border-b-[1.5px] transition-colors",
+                activeTab === tab.id
+                  ? "font-medium text-foreground border-primary"
+                  : "text-muted-foreground border-transparent"
+              )}
+            >
+              {tab.label}
+            </button>
+          ))}
         </div>
 
         {loading ? (
           <div className="text-center py-20 text-muted-foreground text-sm">読み込み中...</div>
         ) : (
-          <div className="max-w-2xl">
+          <div>
 
             {/* Categories Tab */}
             {activeTab === "categories" && (
-              <div className="space-y-8">
+              <div className="space-y-11">
                 {categories.length === 0 && (
-                  <div className="rounded-2xl bg-card p-6 text-center">
+                  <div className="text-center py-10">
                     <p className="text-sm text-muted-foreground mb-4">カテゴリがありません</p>
-                    <Button variant="outline" onClick={seedDefaultCategories} className="rounded-xl">
+                    <Button variant="outline" onClick={seedDefaultCategories}>
                       デフォルトカテゴリを追加
                     </Button>
                   </div>
@@ -408,69 +460,77 @@ export default function SettingsPage() {
 
                 {/* 収入カテゴリ */}
                 <div>
-                  <div className="flex items-center justify-between mb-4">
-                    <p className="text-xs tracking-wide uppercase text-muted-foreground">収入カテゴリ</p>
-                    <Dialog open={addCategoryOpen && newCategoryType === "income"} onOpenChange={(o) => { setAddCategoryOpen(o); setNewCategoryType("income") }}>
-                      <DialogTrigger asChild>
-                        <button onClick={() => setNewCategoryType("income")} className="text-xs text-muted-foreground hover:text-foreground transition-colors">+ 追加</button>
-                      </DialogTrigger>
-                      <DialogContent className="rounded-2xl">
-                        <DialogHeader><DialogTitle>収入カテゴリを追加</DialogTitle></DialogHeader>
-                        <div className="space-y-4 pt-4">
-                          <div className="flex gap-2">
-                            <Input placeholder="絵文字" value={newCategoryIcon} onChange={(e) => setNewCategoryIcon(e.target.value)} className="rounded-xl w-20 text-center text-lg" maxLength={8} />
-                            <Input placeholder="カテゴリ名" value={newCategoryName} onChange={(e) => setNewCategoryName(e.target.value)} className="rounded-xl flex-1" />
+                  <SectionHeader
+                    label="収入カテゴリ"
+                    action={
+                      <Dialog open={addCategoryOpen && newCategoryType === "income"} onOpenChange={(o) => { setAddCategoryOpen(o); setNewCategoryType("income") }}>
+                        <DialogTrigger asChild>
+                          <button onClick={() => setNewCategoryType("income")}>
+                            <AddLink>＋ 追加</AddLink>
+                          </button>
+                        </DialogTrigger>
+                        <DialogContent className="rounded-2xl">
+                          <DialogHeader><DialogTitle>収入カテゴリを追加</DialogTitle></DialogHeader>
+                          <div className="space-y-4 pt-4">
+                            <div className="flex gap-2">
+                              <Input placeholder="絵文字" value={newCategoryIcon} onChange={(e) => setNewCategoryIcon(e.target.value)} className="rounded-xl w-20 text-center text-lg" maxLength={8} />
+                              <Input placeholder="カテゴリ名" value={newCategoryName} onChange={(e) => setNewCategoryName(e.target.value)} className="rounded-xl flex-1" />
+                            </div>
+                            <p className="text-xs text-muted-foreground">絵文字は省略可（自動で割り当てます）</p>
+                            <Button onClick={handleAddCategory} disabled={!newCategoryName.trim()} className="w-full rounded-xl">追加する</Button>
                           </div>
-                          <p className="text-xs text-muted-foreground">絵文字は省略可（自動で割り当てます）</p>
-                          <Button onClick={handleAddCategory} disabled={!newCategoryName.trim()} className="w-full rounded-xl">追加する</Button>
-                        </div>
-                      </DialogContent>
-                    </Dialog>
-                  </div>
+                        </DialogContent>
+                      </Dialog>
+                    }
+                  />
                   {incomeCategories.length > 0 && <CategoryList cats={incomeCategories} />}
                 </div>
 
                 {/* 支出カテゴリ */}
                 <div>
-                  <div className="flex items-center justify-between mb-4">
-                    <p className="text-xs tracking-wide uppercase text-muted-foreground">支出カテゴリ</p>
-                    <Dialog open={addCategoryOpen && newCategoryType === "expense"} onOpenChange={(o) => { setAddCategoryOpen(o); setNewCategoryType("expense") }}>
-                      <DialogTrigger asChild>
-                        <button onClick={() => setNewCategoryType("expense")} className="text-xs text-muted-foreground hover:text-foreground transition-colors">+ 追加</button>
-                      </DialogTrigger>
-                      <DialogContent className="rounded-2xl">
-                        <DialogHeader><DialogTitle>支出カテゴリを追加</DialogTitle></DialogHeader>
-                        <div className="space-y-4 pt-4">
-                          <div className="flex gap-2">
-                            <Input placeholder="絵文字" value={newCategoryIcon} onChange={(e) => setNewCategoryIcon(e.target.value)} className="rounded-xl w-20 text-center text-lg" maxLength={8} />
-                            <Input placeholder="カテゴリ名" value={newCategoryName} onChange={(e) => setNewCategoryName(e.target.value)} className="rounded-xl flex-1" />
-                          </div>
-                          <p className="text-xs text-muted-foreground">絵文字は省略可（自動で割り当てます）</p>
-                          <div className="flex items-center justify-between rounded-xl bg-muted/30 px-4 py-3">
-                            <span className="text-sm text-foreground">固定費として扱う</span>
-                            <button
-                              type="button"
-                              role="switch"
-                              aria-checked={newCategoryIsFixed}
-                              onClick={() => setNewCategoryIsFixed(!newCategoryIsFixed)}
-                              className={cn(
-                                "relative inline-flex h-5 w-9 flex-shrink-0 items-center rounded-full transition-colors",
-                                newCategoryIsFixed ? "bg-foreground" : "bg-muted"
-                              )}
-                            >
-                              <span
+                  <SectionHeader
+                    label="支出カテゴリ"
+                    action={
+                      <Dialog open={addCategoryOpen && newCategoryType === "expense"} onOpenChange={(o) => { setAddCategoryOpen(o); setNewCategoryType("expense") }}>
+                        <DialogTrigger asChild>
+                          <button onClick={() => setNewCategoryType("expense")}>
+                            <AddLink>＋ 追加</AddLink>
+                          </button>
+                        </DialogTrigger>
+                        <DialogContent className="rounded-2xl">
+                          <DialogHeader><DialogTitle>支出カテゴリを追加</DialogTitle></DialogHeader>
+                          <div className="space-y-4 pt-4">
+                            <div className="flex gap-2">
+                              <Input placeholder="絵文字" value={newCategoryIcon} onChange={(e) => setNewCategoryIcon(e.target.value)} className="rounded-xl w-20 text-center text-lg" maxLength={8} />
+                              <Input placeholder="カテゴリ名" value={newCategoryName} onChange={(e) => setNewCategoryName(e.target.value)} className="rounded-xl flex-1" />
+                            </div>
+                            <p className="text-xs text-muted-foreground">絵文字は省略可（自動で割り当てます）</p>
+                            <div className="flex items-center justify-between rounded-xl bg-muted/30 px-4 py-3">
+                              <span className="text-sm text-foreground">固定費として扱う</span>
+                              <button
+                                type="button"
+                                role="switch"
+                                aria-checked={newCategoryIsFixed}
+                                onClick={() => setNewCategoryIsFixed(!newCategoryIsFixed)}
                                 className={cn(
-                                  "inline-block h-4 w-4 transform rounded-full bg-background transition-transform",
-                                  newCategoryIsFixed ? "translate-x-4" : "translate-x-0.5"
+                                  "relative inline-flex h-5 w-9 flex-shrink-0 items-center rounded-full transition-colors",
+                                  newCategoryIsFixed ? "bg-foreground" : "bg-muted"
                                 )}
-                              />
-                            </button>
+                              >
+                                <span
+                                  className={cn(
+                                    "inline-block h-4 w-4 transform rounded-full bg-background transition-transform",
+                                    newCategoryIsFixed ? "translate-x-4" : "translate-x-0.5"
+                                  )}
+                                />
+                              </button>
+                            </div>
+                            <Button onClick={handleAddCategory} disabled={!newCategoryName.trim()} className="w-full rounded-xl">追加する</Button>
                           </div>
-                          <Button onClick={handleAddCategory} disabled={!newCategoryName.trim()} className="w-full rounded-xl">追加する</Button>
-                        </div>
-                      </DialogContent>
-                    </Dialog>
-                  </div>
+                        </DialogContent>
+                      </Dialog>
+                    }
+                  />
                   {expenseCategories.length > 0 && <CategoryList cats={expenseCategories} />}
                 </div>
               </div>
@@ -479,74 +539,61 @@ export default function SettingsPage() {
             {/* Accounts Tab */}
             {activeTab === "accounts" && (
               <div>
-                <div className="flex items-center justify-between mb-4">
-                  <p className="text-xs tracking-wide uppercase text-muted-foreground">登録口座</p>
-                  <Dialog open={addAccountOpen} onOpenChange={setAddAccountOpen}>
-                    <DialogTrigger asChild>
-                      <button className="text-xs text-muted-foreground hover:text-foreground transition-colors">+ 追加</button>
-                    </DialogTrigger>
-                    <DialogContent className="rounded-2xl">
-                      <DialogHeader><DialogTitle>口座を追加</DialogTitle></DialogHeader>
-                      <div className="space-y-4 pt-4">
-                        <div className="flex gap-2">
-                          <Input placeholder="絵文字" value={newAccountIcon} onChange={(e) => setNewAccountIcon(e.target.value)} className="rounded-xl w-20 text-center text-lg" maxLength={8} />
-                          <Input placeholder="口座名" value={newAccountName} onChange={(e) => setNewAccountName(e.target.value)} className="rounded-xl flex-1" />
-                        </div>
-                        <p className="text-xs text-muted-foreground">絵文字は省略可（自動で割り当てます）</p>
-                        <Select value={newAccountKind} onValueChange={(v) => { setNewAccountKind(v as typeof newAccountKind); setNewAccountDebitId("") }}>
-                          <SelectTrigger className="rounded-xl"><SelectValue placeholder="種類" /></SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="bank">銀行口座</SelectItem>
-                            <SelectItem value="cash">現金</SelectItem>
-                            <SelectItem value="credit_card">クレジットカード</SelectItem>
-                            <SelectItem value="e_money">電子マネー</SelectItem>
-                          </SelectContent>
-                        </Select>
-                        {newAccountKind === "credit_card" && (
-                          <Select value={newAccountDebitId} onValueChange={setNewAccountDebitId}>
-                            <SelectTrigger className="rounded-xl"><SelectValue placeholder="引き落とし元口座（任意）" /></SelectTrigger>
+                <SectionHeader
+                  label="登録口座"
+                  action={
+                    <Dialog open={addAccountOpen} onOpenChange={setAddAccountOpen}>
+                      <DialogTrigger asChild>
+                        <button><AddLink>＋ 追加</AddLink></button>
+                      </DialogTrigger>
+                      <DialogContent className="rounded-2xl">
+                        <DialogHeader><DialogTitle>口座を追加</DialogTitle></DialogHeader>
+                        <div className="space-y-4 pt-4">
+                          <div className="flex gap-2">
+                            <Input placeholder="絵文字" value={newAccountIcon} onChange={(e) => setNewAccountIcon(e.target.value)} className="rounded-xl w-20 text-center text-lg" maxLength={8} />
+                            <Input placeholder="口座名" value={newAccountName} onChange={(e) => setNewAccountName(e.target.value)} className="rounded-xl flex-1" />
+                          </div>
+                          <p className="text-xs text-muted-foreground">絵文字は省略可（自動で割り当てます）</p>
+                          <Select value={newAccountKind} onValueChange={(v) => { setNewAccountKind(v as typeof newAccountKind); setNewAccountDebitId("") }}>
+                            <SelectTrigger className="rounded-xl"><SelectValue placeholder="種類" /></SelectTrigger>
                             <SelectContent>
-                              {accounts.filter((a) => a.kind === "bank").map((a) => (
-                                <SelectItem key={a.id} value={a.id}>{a.icon} {a.name}</SelectItem>
-                              ))}
+                              <SelectItem value="bank">銀行口座</SelectItem>
+                              <SelectItem value="cash">現金</SelectItem>
+                              <SelectItem value="credit_card">クレジットカード</SelectItem>
+                              <SelectItem value="e_money">電子マネー</SelectItem>
                             </SelectContent>
                           </Select>
-                        )}
-                        <Input type="number" placeholder="初期残高（任意）" value={newAccountBalance} onChange={(e) => setNewAccountBalance(e.target.value)} className="rounded-xl" />
-                        <Button onClick={handleAddAccount} className="w-full rounded-xl">追加する</Button>
-                      </div>
-                    </DialogContent>
-                  </Dialog>
-                </div>
+                          {newAccountKind === "credit_card" && (
+                            <Select value={newAccountDebitId} onValueChange={setNewAccountDebitId}>
+                              <SelectTrigger className="rounded-xl"><SelectValue placeholder="引き落とし元口座（任意）" /></SelectTrigger>
+                              <SelectContent>
+                                {accounts.filter((a) => a.kind === "bank").map((a) => (
+                                  <SelectItem key={a.id} value={a.id}>{a.icon} {a.name}</SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                          )}
+                          <Input type="number" placeholder="初期残高（任意）" value={newAccountBalance} onChange={(e) => setNewAccountBalance(e.target.value)} className="rounded-xl" />
+                          <Button onClick={handleAddAccount} className="w-full rounded-xl">追加する</Button>
+                        </div>
+                      </DialogContent>
+                    </Dialog>
+                  }
+                />
 
                 {accounts.length === 0 ? (
-                  <p className="text-sm text-muted-foreground">口座が登録されていません</p>
+                  <p className="pt-6 text-sm text-muted-foreground">口座が登録されていません</p>
                 ) : (
-                  <div className="rounded-2xl bg-card divide-y divide-border/50">
+                  <div>
                     {accounts.map((account) => (
-                      <div key={account.id} className="flex items-center justify-between px-5 py-4">
-                        <div className="flex items-center gap-3">
-                          <span className="text-lg">{account.icon}</span>
-                          <div>
-                            <p className="text-sm text-foreground">{account.name}</p>
-                            <p className="text-xs text-muted-foreground">¥{account.balance.toLocaleString()}</p>
-                          </div>
-                        </div>
-                        <div className="flex items-center gap-1">
-                          <button
-                            onClick={() => { setEditingAccount(account); setEditAccountName(account.name); setEditAccountIcon(account.icon ?? ""); setEditAccountBalance(String(account.opening_balance ?? 0)); setEditAccountDebitId(account.debit_account_id ?? "") }}
-                            className="p-2 text-muted-foreground hover:text-foreground transition-colors"
-                          >
-                            <Pencil className="h-4 w-4" />
-                          </button>
-                          <button
-                            onClick={() => setDeletingItem({ kind: "account", id: account.id, name: account.name })}
-                            className="p-2 text-muted-foreground hover:text-destructive transition-colors"
-                          >
-                            <Trash2 className="h-4 w-4" />
-                          </button>
-                        </div>
-                      </div>
+                      <ListRow
+                        key={account.id}
+                        icon={account.icon ?? "🏦"}
+                        title={account.name}
+                        subtitle={`¥${account.balance.toLocaleString()}`}
+                        onEdit={() => { setEditingAccount(account); setEditAccountName(account.name); setEditAccountIcon(account.icon ?? ""); setEditAccountBalance(String(account.opening_balance ?? 0)); setEditAccountDebitId(account.debit_account_id ?? "") }}
+                        onDelete={() => setDeletingItem({ kind: "account", id: account.id, name: account.name })}
+                      />
                     ))}
                   </div>
                 )}
@@ -556,95 +603,81 @@ export default function SettingsPage() {
             {/* Templates Tab */}
             {activeTab === "templates" && (
               <div>
-                <div className="flex items-center justify-between mb-2">
-                  <p className="text-xs tracking-wide uppercase text-muted-foreground">固定費テンプレート</p>
-                  <Dialog open={addTplOpen} onOpenChange={setAddTplOpen}>
-                    <DialogTrigger asChild>
-                      <button className="text-xs text-muted-foreground hover:text-foreground transition-colors">+ 追加</button>
-                    </DialogTrigger>
-                    <DialogContent className="rounded-2xl max-w-sm">
-                      <DialogHeader><DialogTitle>固定費を追加</DialogTitle></DialogHeader>
-                      <div className="space-y-4 pt-4">
-                        <Input placeholder="名称（例：家賃）" value={newTplName} onChange={(e) => setNewTplName(e.target.value)} className="rounded-xl" />
-                        <Input type="number" placeholder="金額" value={newTplAmount} onChange={(e) => setNewTplAmount(e.target.value)} className="rounded-xl" />
-                        <div className="flex rounded-full bg-muted p-1">
-                          {(["expense", "income"] as TransactionType[]).map((t) => (
-                            <button key={t} onClick={() => { setNewTplType(t); setNewTplCategoryId("") }}
-                              className={cn("flex-1 py-1.5 rounded-full text-sm transition-all", newTplType === t ? "bg-card text-foreground shadow-sm" : "text-muted-foreground")}
-                            >
-                              {t === "expense" ? "支出" : "収入"}
-                            </button>
-                          ))}
+                <SectionHeader
+                  label="固定費テンプレート"
+                  action={
+                    <Dialog open={addTplOpen} onOpenChange={setAddTplOpen}>
+                      <DialogTrigger asChild>
+                        <button><AddLink>＋ 追加</AddLink></button>
+                      </DialogTrigger>
+                      <DialogContent className="rounded-2xl max-w-sm">
+                        <DialogHeader><DialogTitle>固定費を追加</DialogTitle></DialogHeader>
+                        <div className="space-y-4 pt-4">
+                          <Input placeholder="名称（例：家賃）" value={newTplName} onChange={(e) => setNewTplName(e.target.value)} className="rounded-xl" />
+                          <Input type="number" placeholder="金額" value={newTplAmount} onChange={(e) => setNewTplAmount(e.target.value)} className="rounded-xl" />
+                          <div className="flex rounded-full bg-muted p-1">
+                            {(["expense", "income"] as TransactionType[]).map((t) => (
+                              <button key={t} onClick={() => { setNewTplType(t); setNewTplCategoryId("") }}
+                                className={cn("flex-1 py-1.5 rounded-full text-sm transition-all", newTplType === t ? "bg-card text-foreground shadow-sm" : "text-muted-foreground")}
+                              >
+                                {t === "expense" ? "支出" : "収入"}
+                              </button>
+                            ))}
+                          </div>
+                          <Select value={newTplCategoryId} onValueChange={setNewTplCategoryId}>
+                            <SelectTrigger className="rounded-xl"><SelectValue placeholder="カテゴリ" /></SelectTrigger>
+                            <SelectContent>
+                              {tplFilteredCategories.map((c) => (
+                                <SelectItem key={c.id} value={c.id}>{c.icon} {c.name}</SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                          <Select value={newTplAccountId} onValueChange={setNewTplAccountId}>
+                            <SelectTrigger className="rounded-xl"><SelectValue placeholder="口座" /></SelectTrigger>
+                            <SelectContent>
+                              {accounts.map((a) => (
+                                <SelectItem key={a.id} value={a.id}>{a.icon} {a.name}</SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                          <Input type="number" placeholder="引落日（1〜31）" min="1" max="31" value={newTplDay} onChange={(e) => setNewTplDay(e.target.value)} className="rounded-xl" />
+                          {newTplDay && !isValidDayOfMonth(newTplDay) && (
+                            <p className="text-xs text-destructive">引落日は1〜31の範囲で入力してください</p>
+                          )}
+                          <Button onClick={handleAddTemplate} disabled={!newTplName || !newTplAmount || !newTplCategoryId || !newTplAccountId || !isValidDayOfMonth(newTplDay)} className="w-full rounded-xl">
+                            追加する
+                          </Button>
                         </div>
-                        <Select value={newTplCategoryId} onValueChange={setNewTplCategoryId}>
-                          <SelectTrigger className="rounded-xl"><SelectValue placeholder="カテゴリ" /></SelectTrigger>
-                          <SelectContent>
-                            {tplFilteredCategories.map((c) => (
-                              <SelectItem key={c.id} value={c.id}>{c.icon} {c.name}</SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                        <Select value={newTplAccountId} onValueChange={setNewTplAccountId}>
-                          <SelectTrigger className="rounded-xl"><SelectValue placeholder="口座" /></SelectTrigger>
-                          <SelectContent>
-                            {accounts.map((a) => (
-                              <SelectItem key={a.id} value={a.id}>{a.icon} {a.name}</SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                        <Input type="number" placeholder="引落日（1〜31）" min="1" max="31" value={newTplDay} onChange={(e) => setNewTplDay(e.target.value)} className="rounded-xl" />
-                        {newTplDay && !isValidDayOfMonth(newTplDay) && (
-                          <p className="text-xs text-destructive">引落日は1〜31の範囲で入力してください</p>
-                        )}
-                        <Button onClick={handleAddTemplate} disabled={!newTplName || !newTplAmount || !newTplCategoryId || !newTplAccountId || !isValidDayOfMonth(newTplDay)} className="w-full rounded-xl">
-                          追加する
-                        </Button>
-                      </div>
-                    </DialogContent>
-                  </Dialog>
-                </div>
+                      </DialogContent>
+                    </Dialog>
+                  }
+                />
 
-                <p className="text-xs text-muted-foreground mb-4">毎月の固定費を登録して一括登録できます</p>
+                <p className="text-xs text-muted-foreground pt-3 pb-1">毎月の固定費を登録して一括登録できます</p>
 
                 {templates.length === 0 ? (
-                  <p className="text-sm text-muted-foreground">テンプレートがありません</p>
+                  <p className="pt-6 text-sm text-muted-foreground">テンプレートがありません</p>
                 ) : (
                   <>
-                    <div className="rounded-2xl bg-card divide-y divide-border/50 mb-4">
+                    <div>
                       {templates.map((tpl) => (
-                        <div key={tpl.id} className="flex items-center justify-between px-5 py-4">
-                          <div>
-                            <p className="text-sm text-foreground">{tpl.name}</p>
-                            <p className="text-xs text-muted-foreground">
-                              {tpl.icon} {tpl.category} · {tpl.account} · 毎月{tpl.day_of_month}日
-                            </p>
-                          </div>
-                          <div className="flex items-center gap-1">
-                            <span className="text-sm tabular-nums text-foreground mr-2">
-                              {formatCurrency(tpl.amount)}
-                            </span>
-                            <button
-                              onClick={() => {
-                                setEditingTemplate(tpl)
-                                setEditTplName(tpl.name)
-                                setEditTplAmount(String(tpl.amount))
-                                setEditTplType(tpl.type)
-                                setEditTplCategoryId(tpl.category_id)
-                                setEditTplAccountId(tpl.account_id)
-                                setEditTplDay(String(tpl.day_of_month))
-                              }}
-                              className="p-2 text-muted-foreground hover:text-foreground transition-colors"
-                            >
-                              <Pencil className="h-4 w-4" />
-                            </button>
-                            <button
-                              onClick={() => setDeletingItem({ kind: "template", id: tpl.id, name: tpl.name })}
-                              className="p-2 text-muted-foreground hover:text-destructive transition-colors"
-                            >
-                              <Trash2 className="h-4 w-4" />
-                            </button>
-                          </div>
-                        </div>
+                        <ListRow
+                          key={tpl.id}
+                          icon={tpl.icon ?? "📅"}
+                          title={tpl.name}
+                          subtitle={`${tpl.category} ・ ${tpl.account} ・ 毎月${tpl.day_of_month}日`}
+                          amount={formatCurrency(tpl.amount)}
+                          onEdit={() => {
+                            setEditingTemplate(tpl)
+                            setEditTplName(tpl.name)
+                            setEditTplAmount(String(tpl.amount))
+                            setEditTplType(tpl.type)
+                            setEditTplCategoryId(tpl.category_id)
+                            setEditTplAccountId(tpl.account_id)
+                            setEditTplDay(String(tpl.day_of_month))
+                          }}
+                          onDelete={() => setDeletingItem({ kind: "template", id: tpl.id, name: tpl.name })}
+                        />
                       ))}
                     </div>
 
@@ -652,7 +685,7 @@ export default function SettingsPage() {
                       onClick={handleApplyTemplates}
                       disabled={applyingTemplates}
                       variant="outline"
-                      className="w-full rounded-xl"
+                      className="w-full mt-6"
                     >
                       {applyingTemplates ? "登録中..." : `${getCurrentMonth()}分を一括登録`}
                     </Button>
