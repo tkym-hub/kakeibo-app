@@ -6,11 +6,11 @@ import { cn } from "@/lib/utils"
 import { supabase } from "@/lib/supabase"
 
 const navItems = [
-  { href: "/", label: "ダッシュボード" },
-  { href: "/add", label: "明細追加" },
-  { href: "/transactions", label: "明細一覧" },
-  { href: "/monthly", label: "月次詳細" },
-  { href: "/settings", label: "設定" },
+  { href: "/", label: "Dashboard" },
+  { href: "/add", label: "Add Entry" },
+  { href: "/transactions", label: "History" },
+  { href: "/monthly", label: "Monthly" },
+  { href: "/settings", label: "Settings" },
 ]
 
 export function TopNav() {
@@ -47,7 +47,7 @@ export function TopNav() {
           onClick={handleLogout}
           className="ml-3.5 text-xs text-muted-foreground/80 transition-colors hover:text-foreground"
         >
-          ログアウト
+          Log out
         </button>
       </div>
       <button

@@ -6,11 +6,11 @@ import { LayoutDashboard, Plus, List, BarChart3, Settings } from "lucide-react"
 import { cn } from "@/lib/utils"
 
 const navItems = [
-  { href: "/", label: "ホーム", icon: LayoutDashboard },
-  { href: "/transactions", label: "明細", icon: List },
-  { href: "/add", label: "追加", icon: Plus, isMain: true },
-  { href: "/monthly", label: "月次", icon: BarChart3 },
-  { href: "/settings", label: "設定", icon: Settings },
+  { href: "/", label: "Home", icon: LayoutDashboard },
+  { href: "/transactions", label: "History", icon: List },
+  { href: "/add", label: "Add", icon: Plus, isMain: true },
+  { href: "/monthly", label: "Monthly", icon: BarChart3 },
+  { href: "/settings", label: "Settings", icon: Settings },
 ]
 
 export function BottomNav() {

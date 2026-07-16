@@ -424,7 +424,7 @@ export default function SettingsPage() {
           <p className="italic font-serif text-[13px] tracking-[0.14em] text-muted-foreground mb-2.5">
             Preferences
           </p>
-          <h1 className="font-serif-jp text-[28px] md:text-[34px] text-foreground">設定</h1>
+          <h1 className="font-serif text-[28px] md:text-[34px] text-foreground">Settings</h1>
         </header>
 
         <div className="flex gap-9 border-b border-border text-sm mb-11">
