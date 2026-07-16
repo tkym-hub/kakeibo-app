@@ -421,9 +421,6 @@ export default function SettingsPage() {
     <AppLayout>
       <div className="max-w-[760px] mx-auto px-6 md:px-10 pt-10 pb-16 md:pt-12 md:pb-[88px]">
         <header className="mb-9">
-          <p className="italic font-serif text-[13px] tracking-[0.14em] text-muted-foreground mb-2.5">
-            Preferences
-          </p>
           <h1 className="font-serif text-[28px] md:text-[34px] text-foreground">Settings</h1>
         </header>
 
