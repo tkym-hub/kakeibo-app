@@ -23,12 +23,12 @@ const notoSerifJP = Noto_Serif_JP({
 })
 
 export const metadata: Metadata = {
-  title: '家計簿 | シンプルな家計管理',
+  title: 'Okane | シンプルな家計管理',
   description: 'シンプルで使いやすい家計簿アプリ。収支管理をもっと簡単に。',
   appleWebApp: {
     capable: true,
     statusBarStyle: 'default',
-    title: '家計簿',
+    title: 'Okane',
   },
   manifest: '/manifest.webmanifest',
 }

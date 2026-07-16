@@ -24,8 +24,8 @@ export function TopNav() {
 
   return (
     <nav className="flex h-16 items-center justify-between px-5 md:px-14">
-      <Link href="/" className="font-serif-jp text-base font-medium tracking-[0.06em] text-foreground">
-        家計簿
+      <Link href="/" className="font-serif italic text-lg tracking-[0.04em] text-foreground">
+        Okane
       </Link>
       <div className="hidden items-center gap-[30px] text-[13px] md:flex">
         {navItems.map((item) => {

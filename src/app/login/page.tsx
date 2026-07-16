@@ -53,7 +53,7 @@ export default function LoginPage() {
     <div className="min-h-screen bg-background flex items-center justify-center px-4">
       <div className="w-full max-w-sm">
         <div className="mb-8 text-center">
-          <h1 className="text-2xl font-semibold text-foreground">家計簿</h1>
+          <h1 className="font-serif italic text-3xl text-foreground">Okane</h1>
           <p className="mt-1 text-sm text-muted-foreground">シンプルな収支管理</p>
         </div>
 
