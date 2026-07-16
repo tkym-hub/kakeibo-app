@@ -214,12 +214,15 @@ export default function AddTransactionPage() {
 
   return (
     <AppLayout>
-      <div className="max-w-[640px] mx-auto px-6 md:px-10 pt-10 pb-16 md:pt-12 md:pb-[72px]">
+      <div className="max-w-[640px] lg:max-w-[1100px] mx-auto px-6 md:px-10 pt-10 pb-16 md:pt-12 md:pb-[72px] lg:pt-10 lg:pb-14">
         {/* Header */}
-        <p className="text-center italic font-serif text-[13px] md:text-sm tracking-[0.14em] text-muted-foreground mb-8 md:mb-10">
+        <p className="text-center italic font-serif text-[13px] md:text-sm tracking-[0.14em] text-muted-foreground mb-8 md:mb-10 lg:mb-8">
           Add Entry
         </p>
 
+        {/* lg以上: 左=金額+収支タブ / 右=入力フィールド群 の2カラム（iPad横で1画面に収めるため） */}
+        <div className="lg:grid lg:grid-cols-[minmax(0,5fr)_minmax(0,6fr)] lg:gap-x-14 lg:items-center">
+        <div>
         {/* Amount Block */}
         <div className="text-center border-b border-border-strong pb-6 md:pb-8">
           <div className="inline-flex items-baseline justify-center gap-2 md:gap-2.5">
@@ -276,7 +279,9 @@ export default function AddTransactionPage() {
             振替
           </button>
         </div>
+        </div>
 
+        <div className="lg:[&>:first-child]:mt-0">
         {/* Category Selection (非表示 when transfer) */}
         {!isTransfer && (
           <div className="mt-10">
@@ -386,7 +391,7 @@ export default function AddTransactionPage() {
                       className={cn(
                         "flex items-center gap-2 px-[18px] py-[9px] rounded-full text-[13px] border transition-colors",
                         toAccount === account.id
-                          ? "border-border-strong font-medium text-foreground"
+                          ? "border-primary bg-primary/5 font-medium text-foreground"
                           : "border-border-mid text-muted-foreground"
                       )}
                     >
@@ -400,7 +405,7 @@ export default function AddTransactionPage() {
         )}
 
         {/* Name + Date */}
-        <div className="mt-10 grid grid-cols-1 md:grid-cols-[1fr_220px] gap-6 md:gap-10">
+        <div className="mt-10 lg:mt-8 grid grid-cols-1 md:grid-cols-[1fr_220px] gap-6 md:gap-10">
           {/* Name（履歴サジェスト付き） */}
           <div>
             <p className="text-[11px] tracking-[0.12em] text-muted-foreground mb-1.5">
@@ -481,7 +486,7 @@ export default function AddTransactionPage() {
         )}
 
         {/* 続けて入力する */}
-        <div className="mt-11 mb-5 flex items-center justify-center gap-2.5">
+        <div className="mt-11 lg:mt-8 mb-5 lg:mb-4 flex items-center justify-center gap-2.5">
           <button
             type="button"
             role="switch"
@@ -510,6 +515,8 @@ export default function AddTransactionPage() {
         >
           {saving ? "保存中..." : "保存する"}
         </button>
+        </div>
+        </div>
       </div>
     </AppLayout>
   )
