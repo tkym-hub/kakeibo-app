@@ -176,6 +176,27 @@ export async function getEntrySuggestions(): Promise<EntrySuggestion[]> {
   return result
 }
 
+// カテゴリ表示順用: 直近3ヶ月の取引からカテゴリ別の使用件数を集計
+export async function getCategoryUsageCounts(): Promise<Record<string, number>> {
+  const since = new Date()
+  since.setMonth(since.getMonth() - 3)
+  const sinceStr = since.toISOString().split("T")[0]
+
+  const { data, error } = await supabase
+    .from("transactions")
+    .select("category_id")
+    .gte("txn_date", sinceStr)
+
+  if (error) throw error
+
+  const counts: Record<string, number> = {}
+  for (const row of data ?? []) {
+    if (!row.category_id) continue
+    counts[row.category_id] = (counts[row.category_id] ?? 0) + 1
+  }
+  return counts
+}
+
 // 振替カテゴリIDを取得（なければ is_active=false で自動作成）
 export async function getOrCreateTransferCategory(userId: string): Promise<string> {
   const { data: existingCats, error: catFetchError } = await supabase
