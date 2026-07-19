@@ -309,10 +309,10 @@ export default function TransactionsPage() {
                           </div>
                           <div className="flex-1 min-w-0">
                             <p className="text-sm text-foreground truncate">
-                              {transaction.name || transaction.category}
+                              {transaction.name || transaction.memo || transaction.category}
                             </p>
                             <p className="text-[11.5px] text-muted-foreground mt-0.5 truncate">
-                              {transaction.name && `${transaction.category} ・ `}
+                              {(transaction.name || transaction.memo) && `${transaction.category} ・ `}
                               {transaction.account}
                             </p>
                           </div>

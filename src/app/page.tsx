@@ -294,7 +294,7 @@ export default function DashboardPage() {
                     >
                       <span className="text-[15px]">{t.icon ?? "📦"}</span>
                       <div className="flex-1 min-w-0">
-                        <p className="text-[13.5px] truncate m-0">{t.name || t.category}</p>
+                        <p className="text-[13.5px] truncate m-0">{t.name || t.memo || t.category}</p>
                         <p className="text-[11px] mt-0.5 m-0" style={{ color: "oklch(0.58 0.008 260)" }}>
                           {formatDate(t.date)}・{t.account}
                         </p>
