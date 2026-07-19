@@ -9,6 +9,7 @@ import {
   getAccounts,
   getOrCreateTransferCategory,
   getEntrySuggestions,
+  getCategoryUsageCounts,
   EntrySuggestion,
 } from "@/lib/data"
 import { Category, Account, TransactionType } from "@/lib/types"
@@ -30,6 +31,8 @@ export default function AddTransactionPage() {
 
   const [categories, setCategories] = useState<Category[]>([])
   const [accounts, setAccounts] = useState<Account[]>([])
+  const [usageCounts, setUsageCounts] = useState<Record<string, number>>({})
+  const [categoriesExpanded, setCategoriesExpanded] = useState(false)
 
   // 履歴サジェスト
   const [suggestions, setSuggestions] = useState<EntrySuggestion[]>([])
@@ -42,14 +45,18 @@ export default function AddTransactionPage() {
   const [savedMessage, setSavedMessage] = useState<string | null>(null)
 
   useEffect(() => {
-    Promise.all([getCategories(), getAccounts(), getEntrySuggestions()]).then(
-      ([cats, accs, suggs]) => {
-        setCategories(cats)
-        setAccounts(accs)
-        if (accs.length > 0) setSelectedAccount(accs[0].id)
-        setSuggestions(suggs)
-      }
-    )
+    Promise.all([
+      getCategories(),
+      getAccounts(),
+      getEntrySuggestions(),
+      getCategoryUsageCounts(),
+    ]).then(([cats, accs, suggs, counts]) => {
+      setCategories(cats)
+      setAccounts(accs)
+      if (accs.length > 0) setSelectedAccount(accs[0].id)
+      setSuggestions(suggs)
+      setUsageCounts(counts)
+    })
   }, [])
 
   // 品目名エリア外クリックでサジェストを閉じる
@@ -66,7 +73,23 @@ export default function AddTransactionPage() {
     return () => document.removeEventListener("mousedown", handleOutsideClick)
   }, [])
 
-  const filteredCategories = categories.filter((c) => c.type === type)
+  // 直近3ヶ月の使用頻度順（同数・履歴なしは getCategories の登録順を維持）
+  const INITIAL_CATEGORY_COUNT = 8
+  const filteredCategories = categories
+    .filter((c) => c.type === type)
+    .sort((a, b) => (usageCounts[b.id] ?? 0) - (usageCounts[a.id] ?? 0))
+
+  const isCategoryCollapsible = filteredCategories.length > INITIAL_CATEGORY_COUNT
+  const visibleCategories = (() => {
+    if (!isCategoryCollapsible || categoriesExpanded) return filteredCategories
+    const top = filteredCategories.slice(0, INITIAL_CATEGORY_COUNT)
+    // 選択中カテゴリが上位8個の外にある場合は末尾と入れ替えて見えるようにする
+    if (selectedCategory && !top.some((c) => c.id === selectedCategory)) {
+      const selected = filteredCategories.find((c) => c.id === selectedCategory)
+      if (selected) top[INITIAL_CATEGORY_COUNT - 1] = selected
+    }
+    return top
+  })()
 
   const getCategoryIcon = (catId: string) =>
     categories.find((c) => c.id === catId)?.icon ?? "📦"
@@ -76,6 +99,7 @@ export default function AddTransactionPage() {
     setSelectedCategory("")
     setToAccount("")
     setShowSuggestions(false)
+    setCategoriesExpanded(false)
   }
 
   const handleAmountChange = (value: string) => {
@@ -284,8 +308,8 @@ export default function AddTransactionPage() {
         <div className="lg:[&>:first-child]:mt-0">
         {/* Category Selection (非表示 when transfer) */}
         {!isTransfer && (
-          <div className="mt-10">
-            <p className="text-[11px] tracking-[0.12em] text-muted-foreground mb-4">
+          <div className="mt-10 lg:mt-7">
+            <p className="text-[11px] tracking-[0.12em] text-muted-foreground mb-4 lg:mb-3">
               カテゴリ
             </p>
             {filteredCategories.length === 0 ? (
@@ -293,13 +317,13 @@ export default function AddTransactionPage() {
                 カテゴリがありません。設定画面で追加してください。
               </p>
             ) : (
-              <div className="grid grid-cols-4 gap-2">
-                {filteredCategories.map((category) => (
+              <div className="grid grid-cols-4 lg:grid-cols-5 gap-2">
+                {visibleCategories.map((category) => (
                   <button
                     key={category.id}
                     onClick={() => setSelectedCategory(category.id)}
                     className={cn(
-                      "flex flex-col items-center justify-center gap-1.5 py-3.5 px-2 rounded-[6px] border transition-colors",
+                      "flex flex-col items-center justify-center gap-1.5 py-3.5 lg:py-2.5 px-2 rounded-[6px] border transition-colors",
                       selectedCategory === category.id
                         ? "border-primary bg-primary/5"
                         : "border-transparent"
@@ -318,14 +342,25 @@ export default function AddTransactionPage() {
                     </span>
                   </button>
                 ))}
+                {isCategoryCollapsible && (
+                  <button
+                    onClick={() => setCategoriesExpanded(!categoriesExpanded)}
+                    className="flex flex-col items-center justify-center gap-1.5 py-3.5 lg:py-2.5 px-2 rounded-[6px] border border-dashed border-border-mid transition-colors"
+                  >
+                    <span className="text-[19px]">{categoriesExpanded ? "−" : "⋯"}</span>
+                    <span className="text-[11.5px] truncate w-full text-center text-muted-foreground">
+                      {categoriesExpanded ? "閉じる" : "すべて表示"}
+                    </span>
+                  </button>
+                )}
               </div>
             )}
           </div>
         )}
 
         {/* Account Selection */}
-        <div className="mt-9">
-          <p className="text-[11px] tracking-[0.12em] text-muted-foreground mb-3.5">
+        <div className="mt-9 lg:mt-7">
+          <p className="text-[11px] tracking-[0.12em] text-muted-foreground mb-3.5 lg:mb-3">
             {isTransfer ? "送金元口座" : "口座"}
           </p>
           {accounts.length === 0 ? (
@@ -405,7 +440,7 @@ export default function AddTransactionPage() {
         )}
 
         {/* Name + Date */}
-        <div className="mt-10 lg:mt-8 grid grid-cols-1 md:grid-cols-[1fr_220px] gap-6 md:gap-10">
+        <div className="mt-10 lg:mt-6 grid grid-cols-1 md:grid-cols-[1fr_220px] gap-6 md:gap-10">
           {/* Name（履歴サジェスト付き） */}
           <div>
             <p className="text-[11px] tracking-[0.12em] text-muted-foreground mb-1.5">
@@ -460,7 +495,7 @@ export default function AddTransactionPage() {
         </div>
 
         {/* Memo */}
-        <div className="mt-8">
+        <div className="mt-8 lg:mt-6">
           <p className="text-[11px] tracking-[0.12em] text-muted-foreground mb-1.5">
             メモ
           </p>
@@ -486,7 +521,7 @@ export default function AddTransactionPage() {
         )}
 
         {/* 続けて入力する */}
-        <div className="mt-11 lg:mt-8 mb-5 lg:mb-4 flex items-center justify-center gap-2.5">
+        <div className="mt-11 lg:mt-6 mb-5 lg:mb-4 flex items-center justify-center gap-2.5">
           <button
             type="button"
             role="switch"
