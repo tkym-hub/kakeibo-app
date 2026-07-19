@@ -291,17 +291,17 @@ export default function SettingsPage() {
     const monthStart = `${year}-${String(month).padStart(2, "0")}-01`
     const monthEnd = `${year}-${String(month).padStart(2, "0")}-${String(lastDay).padStart(2, "0")}`
 
-    // 今月すでに登録済みのテンプレート名（memo）を取得して重複防止
+    // 今月すでに登録済みのテンプレート名を取得して重複防止（旧データは memo に入っているため両方見る）
     const { data: existing } = await supabase
       .from("transactions")
-      .select("memo")
+      .select("name, memo")
       .eq("user_id", user.id)
       .gte("txn_date", monthStart)
       .lte("txn_date", monthEnd)
-    const existingMemos = new Set((existing ?? []).map((r) => r.memo))
+    const existingNames = new Set((existing ?? []).flatMap((r) => [r.name, r.memo]))
 
     const rows = templates
-      .filter((tpl) => !existingMemos.has(tpl.name))
+      .filter((tpl) => !existingNames.has(tpl.name))
       .map((tpl) => {
         const day = Math.min(tpl.day_of_month, lastDay)
         const txn_date = `${year}-${String(month).padStart(2, "0")}-${String(day).padStart(2, "0")}`
@@ -312,7 +312,7 @@ export default function SettingsPage() {
           category_id: tpl.category_id,
           account_id: tpl.account_id,
           txn_date,
-          memo: tpl.name,
+          name: tpl.name,
         }
       })
 
