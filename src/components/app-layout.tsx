@@ -11,7 +11,7 @@ export function AppLayout({ children }: AppLayoutProps) {
   return (
     <div className="min-h-screen bg-background">
       <TopNav />
-      <main className="pb-28 md:pb-0">{children}</main>
+      <main className="pb-28 md:pb-20">{children}</main>
       <BottomNav />
     </div>
   )

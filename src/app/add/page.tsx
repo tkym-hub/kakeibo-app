@@ -238,9 +238,9 @@ export default function AddTransactionPage() {
 
   return (
     <AppLayout>
-      <div className="max-w-[640px] lg:max-w-[1100px] mx-auto px-6 md:px-10 pt-10 pb-16 md:pt-12 md:pb-[72px] lg:pt-10 lg:pb-14">
+      <div className="max-w-[640px] lg:max-w-[1100px] mx-auto px-6 md:px-10 pt-10 pb-16 md:pt-12 md:pb-[72px] lg:pt-8 lg:pb-0">
         {/* Header */}
-        <p className="text-center italic font-serif text-[13px] md:text-sm tracking-[0.14em] text-muted-foreground mb-8 md:mb-10 lg:mb-8">
+        <p className="text-center italic font-serif text-[13px] md:text-sm tracking-[0.14em] text-muted-foreground mb-8 md:mb-10 lg:mb-5">
           Add Entry
         </p>
 
