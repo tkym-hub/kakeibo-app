@@ -4,8 +4,9 @@ import { useState, useEffect, useMemo } from "react"
 import Link from "next/link"
 import { AppLayout } from "@/components/app-layout"
 import { MonthSelector } from "@/components/month-selector"
-import { formatCurrency, getTransactions, getAccounts, getCategories, getTemplates, getCurrentMonth, shiftMonth, getOrCreateTransferCategory } from "@/lib/data"
+import { formatCurrency, getTransactions, getAccounts, getCategories, getTemplates, getCardLedger, getCurrentMonth, shiftMonth, getOrCreateTransferCategory, getStatementPeriod, formatPeriodLabel } from "@/lib/data"
 import { Transaction, Account, Category, RecurringTemplate } from "@/lib/types"
+import type { CardLedgerRow, StatementPeriod } from "@/lib/data"
 import { cn } from "@/lib/utils"
 import { supabase } from "@/lib/supabase"
 
@@ -18,6 +19,11 @@ const KIND_LABELS: Record<string, string> = {
   e_money: "電子マネー",
 }
 const KIND_ORDER = ["bank", "cash", "credit_card", "e_money"]
+
+// 締め期間の計算対象となるクレカ口座（引き落とし元が設定されているもの）
+function creditCardIds(accounts: Account[]): string[] {
+  return accounts.filter((a) => a.kind === "credit_card" && a.debit_account_id).map((a) => a.id)
+}
 
 interface BreakdownSectionProps {
   title: string
@@ -65,6 +71,7 @@ export default function MonthlyDetailsPage() {
   const [accounts, setAccounts] = useState<Account[]>([])
   const [categories, setCategories] = useState<Category[]>([])
   const [templates, setTemplates] = useState<RecurringTemplate[]>([])
+  const [cardLedger, setCardLedger] = useState<CardLedgerRow[]>([])
   const [loading, setLoading] = useState(true)
   const [debitTransferring, setDebitTransferring] = useState<string | null>(null)
 
@@ -84,28 +91,27 @@ export default function MonthlyDetailsPage() {
 
       getCategories(),
       getTemplates(),
-    ]).then(([txs, accs, cats, tpls]) => {
+    ]).then(async ([txs, accs, cats, tpls]) => {
       setTransactions(txs)
       setAccounts(accs)
       setCategories(cats)
       setTemplates(tpls)
+      setCardLedger(await getCardLedger(creditCardIds(accs)))
     }).finally(() => setLoading(false))
   }, [currentMonth])
 
   async function handleDebitTransfer(creditAccount: Account) {
     if (!creditAccount.debit_account_id) return
-    // transfer_pair_id 付きの expense（カードからの振替）は除外して二重計上を防ぐ
-    const amount = transactions
-      .filter((t) => t.account_id === creditAccount.id && t.type === "expense" && !t.transfer_pair_id)
-      .reduce((sum, t) => sum + t.amount, 0)
-    if (amount === 0) return
+    const settlement = cardSettlements[creditAccount.id]
+    if (!settlement || settlement.amount <= 0) return
+    const amount = settlement.amount
     setDebitTransferring(creditAccount.id)
     try {
       const { data: { user } } = await supabase.auth.getUser()
       if (!user) return
 
       const transferCategoryId = await getOrCreateTransferCategory(user.id)
-      const txnDate = untilDate ?? new Date().toISOString().split("T")[0]
+      const txnDate = settlement.period.paymentDate
       const pairId = crypto.randomUUID()
 
       const { error } = await supabase.from("transactions").insert([
@@ -138,6 +144,7 @@ export default function MonthlyDetailsPage() {
       ])
       setAccounts(updatedAccounts)
       setTransactions(updatedTxs)
+      setCardLedger(await getCardLedger(creditCardIds(updatedAccounts)))
     } catch {
       alert("引き落とし処理に失敗しました")
     } finally {
@@ -193,22 +200,30 @@ export default function MonthlyDetailsPage() {
   const totalExpense = monthlyBreakdown.fixedExpenses.total + monthlyBreakdown.variableExpenses.total
   const balance = monthlyBreakdown.income.total - totalExpense - monthlyBreakdown.investments.total
 
-  // クレカの未引き落とし額: expense合計 - 振替income合計
-  const monthlyUnpaidByAccount = useMemo(() => {
-    const expense: Record<string, number> = {}
-    const transferIncome: Record<string, number> = {}
-    for (const t of transactions) {
-      if (t.type === "expense" && !t.transfer_pair_id)
-        expense[t.account_id] = (expense[t.account_id] || 0) + t.amount
-      if (t.type === "income" && t.transfer_pair_id)
-        transferIncome[t.account_id] = (transferIncome[t.account_id] || 0) + t.amount
-    }
-    const result: Record<string, number> = {}
-    for (const id of new Set([...Object.keys(expense), ...Object.keys(transferIncome)])) {
-      result[id] = (expense[id] ?? 0) - (transferIncome[id] ?? 0)
+  // カードごとの締め期間と未引き落とし額。
+  // 未引き落とし額 = 期間末までのカード利用累計 − 全期間の引き落とし振替累計（累積差分なので二重計上しない）
+  const cardSettlements = useMemo(() => {
+    const result: Record<string, { amount: number; periodAmount: number; period: StatementPeriod }> = {}
+    for (const account of accounts) {
+      if (account.kind !== "credit_card" || !account.debit_account_id) continue
+      const period = getStatementPeriod(currentMonth, account)
+      if (!period) continue
+      let used = 0
+      let usedInPeriod = 0
+      let paid = 0
+      for (const row of cardLedger) {
+        if (row.account_id !== account.id) continue
+        // transfer_pair_id 付きの expense（カードからの振替）は除外
+        if (row.type === "expense" && !row.transfer_pair_id && row.date <= period.end) {
+          used += row.amount
+          if (row.date >= period.start) usedInPeriod += row.amount
+        }
+        if (row.type === "income" && row.transfer_pair_id) paid += row.amount
+      }
+      result[account.id] = { amount: used - paid, periodAmount: usedInPeriod, period }
     }
     return result
-  }, [transactions])
+  }, [accounts, cardLedger, currentMonth])
 
   const accountsByKind = useMemo(() => {
     const grouped: Record<string, { accounts: Account[]; total: number }> = {}
@@ -325,14 +340,21 @@ export default function MonthlyDetailsPage() {
                         >
                           <span className="text-[15px]">{account.icon}</span>
                           <span className="flex-1 text-[13.5px] text-foreground">{account.name}</span>
-                          {account.kind === "credit_card" && account.debit_account_id && (monthlyUnpaidByAccount[account.id] ?? 0) > 0 && (
-                            <button
-                              onClick={() => handleDebitTransfer(account)}
-                              disabled={debitTransferring === account.id}
-                              className="text-[11.5px] px-3.5 py-1.5 rounded-full bg-primary/10 text-primary-deep hover:bg-primary/20 transition-colors disabled:opacity-50"
-                            >
-                              {debitTransferring === account.id ? "処理中..." : "引き落とし"}
-                            </button>
+                          {(cardSettlements[account.id]?.amount ?? 0) > 0 && (
+                            <>
+                              <span className="hidden sm:inline text-[11px] tabular-nums text-muted-foreground">
+                                {formatPeriodLabel(cardSettlements[account.id].period)}分 {formatCurrency(cardSettlements[account.id].amount)}
+                                {cardSettlements[account.id].amount !== cardSettlements[account.id].periodAmount && "（繰越込み）"}
+                              </span>
+                              <button
+                                onClick={() => handleDebitTransfer(account)}
+                                disabled={debitTransferring === account.id}
+                                title={`${formatPeriodLabel(cardSettlements[account.id].period)}分を ${cardSettlements[account.id].period.paymentDate} に引き落とし`}
+                                className="text-[11.5px] px-3.5 py-1.5 rounded-full bg-primary/10 text-primary-deep hover:bg-primary/20 transition-colors disabled:opacity-50"
+                              >
+                                {debitTransferring === account.id ? "処理中..." : "引き落とし"}
+                              </button>
+                            </>
                           )}
                           <span className="font-serif text-[15px] tabular-nums text-foreground">
                             {formatCurrency(account.balance)}

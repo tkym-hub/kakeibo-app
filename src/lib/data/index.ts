@@ -37,6 +37,21 @@ export const DEFAULT_CATEGORIES = [
 
 // --- 型定義 ---
 
+export type CardLedgerRow = {
+  account_id: string
+  type: TransactionType
+  amount: number
+  date: string
+  transfer_pair_id: string | null
+}
+
+// クレカの締め期間（start〜end が利用期間、paymentDate が引き落とし日）
+export type StatementPeriod = {
+  start: string
+  end: string
+  paymentDate: string
+}
+
 export type EntrySuggestion = {
   name: string
   category_id: string
@@ -69,7 +84,7 @@ export async function getCategories(): Promise<Category[]> {
 export async function getAccounts(untilDate?: string): Promise<Account[]> {
   const { data: accountsData, error } = await supabase
     .from("accounts")
-    .select("id, name, kind, opening_balance, debit_account_id, icon")
+    .select("id, name, kind, opening_balance, debit_account_id, icon, closing_day, payment_day, payment_month_offset")
     .eq("is_active", true)
     .order("sort_order")
     .order("name")
@@ -98,6 +113,29 @@ export async function getAccounts(untilDate?: string): Promise<Account[]> {
     balance: Number(row.opening_balance) + (balanceMap[row.id] ?? 0),
     icon: row.icon ?? ACCOUNT_ICONS[row.kind] ?? "🏦",
     debit_account_id: row.debit_account_id ?? null,
+    closing_day: row.closing_day ?? null,
+    payment_day: row.payment_day ?? null,
+    payment_month_offset: row.payment_month_offset ?? 0,
+  }))
+}
+
+// クレカ口座の締め期間計算用に、対象口座の全期間の明細を取得（月をまたぐ期間に対応するため月絞りをしない）
+export async function getCardLedger(accountIds: string[]): Promise<CardLedgerRow[]> {
+  if (accountIds.length === 0) return []
+
+  const { data, error } = await supabase
+    .from("transactions")
+    .select("account_id, type, amount, txn_date, transfer_pair_id")
+    .in("account_id", accountIds)
+
+  if (error) throw error
+
+  return (data ?? []).map((row) => ({
+    account_id: row.account_id,
+    type: row.type,
+    amount: Number(row.amount),
+    date: row.txn_date,
+    transfer_pair_id: row.transfer_pair_id ?? null,
   }))
 }
 
@@ -303,4 +341,65 @@ export function shiftMonth(month: string, delta: number): string {
   if (!match) return month
   const date = new Date(parseInt(match[1]), parseInt(match[2]) - 1 + delta)
   return `${date.getFullYear()}年${date.getMonth() + 1}月`
+}
+
+// --- クレカ締め期間 ---
+
+function lastDayOfMonth(year: number, month: number): number {
+  return new Date(year, month, 0).getDate()
+}
+
+function toDateString(year: number, month: number, day: number): string {
+  return `${year}-${String(month).padStart(2, "0")}-${String(day).padStart(2, "0")}`
+}
+
+/**
+ * 対象月に締め日が来る利用期間と、その期間の引き落とし日を返す。
+ * 例: 2026年9月 / 18日締め・翌月10日払い → 2026-08-19〜2026-09-18、引き落とし 2026-10-10
+ * closing_day 未設定の口座は従来どおり月初〜月末を1期間とし、引き落としは末日扱い。
+ */
+export function getStatementPeriod(
+  month: string,
+  account: Pick<Account, "closing_day" | "payment_day" | "payment_month_offset">
+): StatementPeriod | null {
+  const match = month.match(/(\d{4})年(\d{1,2})月/)
+  if (!match) return null
+  const year = parseInt(match[1])
+  const m = parseInt(match[2])
+
+  if (!account.closing_day) {
+    const last = lastDayOfMonth(year, m)
+    const end = toDateString(year, m, last)
+    return { start: toDateString(year, m, 1), end, paymentDate: end }
+  }
+
+  const closing = account.closing_day
+  const end = toDateString(year, m, Math.min(closing, lastDayOfMonth(year, m)))
+
+  // 期間の開始 = 前月の締め日の翌日
+  const prev = new Date(year, m - 2, 1)
+  const prevYear = prev.getFullYear()
+  const prevMonth = prev.getMonth() + 1
+  const startDate = new Date(prevYear, prevMonth - 1, Math.min(closing, lastDayOfMonth(prevYear, prevMonth)))
+  startDate.setDate(startDate.getDate() + 1)
+  const start = toDateString(startDate.getFullYear(), startDate.getMonth() + 1, startDate.getDate())
+
+  // 引き落とし月 = 締め月 + payment_month_offset
+  const payMonth = new Date(year, m - 1 + (account.payment_month_offset ?? 0), 1)
+  const payYear = payMonth.getFullYear()
+  const payMonthNum = payMonth.getMonth() + 1
+  const payLast = lastDayOfMonth(payYear, payMonthNum)
+  const payDay = account.payment_day ?? payLast
+  const paymentDate = toDateString(payYear, payMonthNum, Math.min(payDay, payLast))
+
+  return { start, end, paymentDate }
+}
+
+// 「8/19〜9/18」形式の期間ラベル
+export function formatPeriodLabel(period: StatementPeriod): string {
+  const short = (d: string) => {
+    const [, m, day] = d.split("-")
+    return `${parseInt(m)}/${parseInt(day)}`
+  }
+  return `${short(period.start)}〜${short(period.end)}`
 }
