@@ -16,6 +16,22 @@ bun dev
 
 Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
 
+## 環境変数（`.env.local`）
+
+| 変数 | 必須 | 用途 |
+|---|---|---|
+| `NEXT_PUBLIC_SUPABASE_URL` | ○ | Supabase プロジェクトURL |
+| `NEXT_PUBLIC_SUPABASE_ANON_KEY` | ○ | Supabase anon key |
+| `SUPABASE_DB_PASSWORD` | － | `supabase db push` 用のDBパスワード |
+| `NEXT_PUBLIC_DEV_LOGIN_EMAIL` | － | 開発用テストログインのメールアドレス |
+| `NEXT_PUBLIC_DEV_LOGIN_PASSWORD` | － | 開発用テストログインのパスワード |
+
+### 開発用テストログイン
+
+`NEXT_PUBLIC_DEV_LOGIN_EMAIL` と `NEXT_PUBLIC_DEV_LOGIN_PASSWORD` を両方セットすると、`npm run dev` のログイン画面に「テストログイン（開発用）」ボタンが出る。検証用ユーザーは Supabase ダッシュボード → Authentication → Add user（**Auto Confirm User** をON）で作る。データはRLSで本人のアカウントと隔離される。
+
+`process.env.NODE_ENV === "development"` で判定しており、本番ビルド（Vercelのプレビュー環境を含む）ではボタンのコードごと出力されない。
+
 You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
 
 This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.

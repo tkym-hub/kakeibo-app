@@ -7,6 +7,18 @@ import { Eye, EyeOff } from "lucide-react"
 
 type Mode = "login" | "signup"
 
+// 開発用テストログイン。NODE_ENV はビルド時に畳まれるため、
+// 本番ビルド（Vercelのプレビューを含む）ではこのブロックごと残らない。
+const DEV_LOGIN =
+  process.env.NODE_ENV === "development" &&
+  process.env.NEXT_PUBLIC_DEV_LOGIN_EMAIL &&
+  process.env.NEXT_PUBLIC_DEV_LOGIN_PASSWORD
+    ? {
+        email: process.env.NEXT_PUBLIC_DEV_LOGIN_EMAIL,
+        password: process.env.NEXT_PUBLIC_DEV_LOGIN_PASSWORD,
+      }
+    : null
+
 export default function LoginPage() {
   const router = useRouter()
   const [mode, setMode] = useState<Mode>("login")
@@ -46,6 +58,21 @@ export default function LoginPage() {
       }
     }
 
+    setLoading(false)
+  }
+
+  async function handleDevLogin() {
+    if (!DEV_LOGIN) return
+    setError(null)
+    setMessage(null)
+    setLoading(true)
+    const { error } = await supabase.auth.signInWithPassword(DEV_LOGIN)
+    if (error) {
+      setError(`テストログインに失敗しました: ${error.message}`)
+    } else {
+      router.push("/")
+      router.refresh()
+    }
     setLoading(false)
   }
 
@@ -118,6 +145,17 @@ export default function LoginPage() {
               {loading ? "処理中..." : mode === "login" ? "ログイン" : "アカウントを作成"}
             </button>
           </form>
+
+          {DEV_LOGIN && (
+            <button
+              type="button"
+              onClick={handleDevLogin}
+              disabled={loading}
+              className="mt-4 w-full rounded-xl border border-dashed border-border py-2 text-sm text-muted-foreground hover:text-foreground hover:border-border-strong disabled:opacity-50 transition-colors"
+            >
+              テストログイン（開発用）
+            </button>
+          )}
 
           <div className="mt-4 text-center">
             <button
