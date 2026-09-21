@@ -32,6 +32,16 @@ function isValidDayOfMonth(value: string): boolean {
   return Number.isInteger(n) && n >= 1 && n <= 31
 }
 
+// 締め日・引き落とし日は未入力なら null（= 従来どおり月初〜月末で集計）
+function parseDayOfMonth(value: string): number | null {
+  return isValidDayOfMonth(value) ? Number(value) : null
+}
+
+// 入力済みなのに 1〜31 でない場合だけ弾く（未入力は許容）
+function isInvalidDayInput(value: string): boolean {
+  return value.trim() !== "" && !isValidDayOfMonth(value)
+}
+
 const tabs = [
   { id: "categories" as const, label: "カテゴリ" },
   { id: "accounts" as const, label: "口座" },
@@ -64,6 +74,9 @@ export default function SettingsPage() {
   const [newAccountKind, setNewAccountKind] = useState<"bank" | "cash" | "credit_card" | "e_money">("bank")
   const [newAccountBalance, setNewAccountBalance] = useState("")
   const [newAccountDebitId, setNewAccountDebitId] = useState("")
+  const [newAccountClosingDay, setNewAccountClosingDay] = useState("")
+  const [newAccountPaymentDay, setNewAccountPaymentDay] = useState("")
+  const [newAccountPaymentOffset, setNewAccountPaymentOffset] = useState("0")
   const [addAccountOpen, setAddAccountOpen] = useState(false)
 
   // 口座編集
@@ -72,6 +85,9 @@ export default function SettingsPage() {
   const [editAccountIcon, setEditAccountIcon] = useState("")
   const [editAccountBalance, setEditAccountBalance] = useState("")
   const [editAccountDebitId, setEditAccountDebitId] = useState("")
+  const [editAccountClosingDay, setEditAccountClosingDay] = useState("")
+  const [editAccountPaymentDay, setEditAccountPaymentDay] = useState("")
+  const [editAccountPaymentOffset, setEditAccountPaymentOffset] = useState("0")
 
   // テンプレート編集
   const [editingTemplate, setEditingTemplate] = useState<RecurringTemplate | null>(null)
@@ -168,6 +184,9 @@ export default function SettingsPage() {
     if (!newAccountName.trim()) return
     const openingBalance = parseInt(newAccountBalance) || 0
     if (openingBalance < 0) { alert("初期残高は0以上で入力してください"); return }
+    if (newAccountKind === "credit_card" && (isInvalidDayInput(newAccountClosingDay) || isInvalidDayInput(newAccountPaymentDay))) {
+      alert("締め日・引き落とし日は1〜31で入力してください"); return
+    }
     const user = await getUser()
     if (!user) return
     const { error } = await supabase.from("accounts").insert({
@@ -179,12 +198,18 @@ export default function SettingsPage() {
       sort_order: 99,
       is_active: true,
       debit_account_id: newAccountKind === "credit_card" && newAccountDebitId ? newAccountDebitId : null,
+      closing_day: newAccountKind === "credit_card" ? parseDayOfMonth(newAccountClosingDay) : null,
+      payment_day: newAccountKind === "credit_card" ? parseDayOfMonth(newAccountPaymentDay) : null,
+      payment_month_offset: newAccountKind === "credit_card" ? Number(newAccountPaymentOffset) : 0,
     })
     if (error) { alert("追加に失敗しました"); return }
     setNewAccountName("")
     setNewAccountIcon("")
     setNewAccountBalance("")
     setNewAccountDebitId("")
+    setNewAccountClosingDay("")
+    setNewAccountPaymentDay("")
+    setNewAccountPaymentOffset("0")
     setAddAccountOpen(false)
     loadData()
   }
@@ -194,11 +219,17 @@ export default function SettingsPage() {
     if (!editingAccount || !editAccountName.trim()) return
     const editOpeningBalance = parseInt(editAccountBalance) || 0
     if (editOpeningBalance < 0) { alert("初期残高は0以上で入力してください"); return }
+    if (editingAccount.kind === "credit_card" && (isInvalidDayInput(editAccountClosingDay) || isInvalidDayInput(editAccountPaymentDay))) {
+      alert("締め日・引き落とし日は1〜31で入力してください"); return
+    }
     const { error } = await supabase.from("accounts").update({
       name: editAccountName.trim(),
       icon: editAccountIcon.trim() || null,
       opening_balance: editOpeningBalance,
       debit_account_id: editingAccount.kind === "credit_card" && editAccountDebitId ? editAccountDebitId : null,
+      closing_day: editingAccount.kind === "credit_card" ? parseDayOfMonth(editAccountClosingDay) : null,
+      payment_day: editingAccount.kind === "credit_card" ? parseDayOfMonth(editAccountPaymentDay) : null,
+      payment_month_offset: editingAccount.kind === "credit_card" ? Number(editAccountPaymentOffset) : 0,
     }).eq("id", editingAccount.id)
     if (error) { alert("変更に失敗しました"); return }
     setEditingAccount(null)
@@ -564,14 +595,28 @@ export default function SettingsPage() {
                             </SelectContent>
                           </Select>
                           {newAccountKind === "credit_card" && (
-                            <Select value={newAccountDebitId} onValueChange={setNewAccountDebitId}>
-                              <SelectTrigger className="rounded-xl"><SelectValue placeholder="引き落とし元口座（任意）" /></SelectTrigger>
-                              <SelectContent>
-                                {accounts.filter((a) => a.kind === "bank").map((a) => (
-                                  <SelectItem key={a.id} value={a.id}>{a.icon} {a.name}</SelectItem>
-                                ))}
-                              </SelectContent>
-                            </Select>
+                            <>
+                              <Select value={newAccountDebitId} onValueChange={setNewAccountDebitId}>
+                                <SelectTrigger className="rounded-xl"><SelectValue placeholder="引き落とし元口座（任意）" /></SelectTrigger>
+                                <SelectContent>
+                                  {accounts.filter((a) => a.kind === "bank").map((a) => (
+                                    <SelectItem key={a.id} value={a.id}>{a.icon} {a.name}</SelectItem>
+                                  ))}
+                                </SelectContent>
+                              </Select>
+                              <div className="flex gap-2">
+                                <Input type="number" placeholder="締め日" value={newAccountClosingDay} onChange={(e) => setNewAccountClosingDay(e.target.value)} className="rounded-xl flex-1" />
+                                <Select value={newAccountPaymentOffset} onValueChange={setNewAccountPaymentOffset}>
+                                  <SelectTrigger className="rounded-xl w-24"><SelectValue /></SelectTrigger>
+                                  <SelectContent>
+                                    <SelectItem value="0">当月</SelectItem>
+                                    <SelectItem value="1">翌月</SelectItem>
+                                  </SelectContent>
+                                </Select>
+                                <Input type="number" placeholder="引き落とし日" value={newAccountPaymentDay} onChange={(e) => setNewAccountPaymentDay(e.target.value)} className="rounded-xl flex-1" />
+                              </div>
+                              <p className="text-xs text-muted-foreground">例：18日締め・翌月10日払いなら「18 / 翌月 / 10」。未入力なら月初〜月末で集計します</p>
+                            </>
                           )}
                           <Input type="number" placeholder="初期残高（任意）" value={newAccountBalance} onChange={(e) => setNewAccountBalance(e.target.value)} className="rounded-xl" />
                           <Button onClick={handleAddAccount} className="w-full rounded-xl">追加する</Button>
@@ -591,7 +636,7 @@ export default function SettingsPage() {
                         icon={account.icon ?? "🏦"}
                         title={account.name}
                         subtitle={`¥${account.balance.toLocaleString()}`}
-                        onEdit={() => { setEditingAccount(account); setEditAccountName(account.name); setEditAccountIcon(account.icon ?? ""); setEditAccountBalance(String(account.opening_balance ?? 0)); setEditAccountDebitId(account.debit_account_id ?? "") }}
+                        onEdit={() => { setEditingAccount(account); setEditAccountName(account.name); setEditAccountIcon(account.icon ?? ""); setEditAccountBalance(String(account.opening_balance ?? 0)); setEditAccountDebitId(account.debit_account_id ?? ""); setEditAccountClosingDay(account.closing_day ? String(account.closing_day) : ""); setEditAccountPaymentDay(account.payment_day ? String(account.payment_day) : ""); setEditAccountPaymentOffset(String(account.payment_month_offset ?? 0)) }}
                         onDelete={() => setDeletingItem({ kind: "account", id: account.id, name: account.name })}
                       />
                     ))}
@@ -743,14 +788,28 @@ export default function SettingsPage() {
               <Input value={editAccountName} onChange={(e) => setEditAccountName(e.target.value)} className="rounded-xl flex-1" placeholder="口座名" />
             </div>
             {editingAccount?.kind === "credit_card" && (
-              <Select value={editAccountDebitId} onValueChange={setEditAccountDebitId}>
-                <SelectTrigger className="rounded-xl"><SelectValue placeholder="引き落とし元口座（任意）" /></SelectTrigger>
-                <SelectContent>
-                  {accounts.filter((a) => a.kind === "bank").map((a) => (
-                    <SelectItem key={a.id} value={a.id}>{a.icon} {a.name}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              <>
+                <Select value={editAccountDebitId} onValueChange={setEditAccountDebitId}>
+                  <SelectTrigger className="rounded-xl"><SelectValue placeholder="引き落とし元口座（任意）" /></SelectTrigger>
+                  <SelectContent>
+                    {accounts.filter((a) => a.kind === "bank").map((a) => (
+                      <SelectItem key={a.id} value={a.id}>{a.icon} {a.name}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <div className="flex gap-2">
+                  <Input type="number" placeholder="締め日" value={editAccountClosingDay} onChange={(e) => setEditAccountClosingDay(e.target.value)} className="rounded-xl flex-1" />
+                  <Select value={editAccountPaymentOffset} onValueChange={setEditAccountPaymentOffset}>
+                    <SelectTrigger className="rounded-xl w-24"><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="0">当月</SelectItem>
+                      <SelectItem value="1">翌月</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  <Input type="number" placeholder="引き落とし日" value={editAccountPaymentDay} onChange={(e) => setEditAccountPaymentDay(e.target.value)} className="rounded-xl flex-1" />
+                </div>
+                <p className="text-xs text-muted-foreground">例：18日締め・翌月10日払いなら「18 / 翌月 / 10」。未入力なら月初〜月末で集計します</p>
+              </>
             )}
             <Input type="number" value={editAccountBalance} onChange={(e) => setEditAccountBalance(e.target.value)} className="rounded-xl" placeholder="初期残高" />
             <p className="text-xs text-muted-foreground">初期残高を変更すると現在の残高も変わります</p>

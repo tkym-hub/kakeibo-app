@@ -31,6 +31,9 @@ export interface Account {
   balance: number     // opening_balance + 累積入出金
   icon: string
   debit_account_id?: string | null
+  closing_day?: number | null          // 締め日（null = 月初〜月末を1期間とする）
+  payment_day?: number | null          // 引き落とし日（null = 対象月の末日）
+  payment_month_offset?: number        // 締め月から引き落とし月までの月数（0=当月、1=翌月）
 }
 
 export interface RecurringTemplate {
