@@ -344,7 +344,9 @@ export default function MonthlyDetailsPage() {
                             <>
                               <span className="hidden sm:inline text-[11px] tabular-nums text-muted-foreground">
                                 {formatPeriodLabel(cardSettlements[account.id].period)}分 {formatCurrency(cardSettlements[account.id].amount)}
-                                {cardSettlements[account.id].amount !== cardSettlements[account.id].periodAmount && "（繰越込み）"}
+                                {/* 未清算の前期間を巻き取っているときだけ注記する。
+                                    期間の一部が清算済み（締め日変更直後など）で amount < periodAmount になる場合は注記しない */}
+                                {cardSettlements[account.id].amount > cardSettlements[account.id].periodAmount && "（繰越込み）"}
                               </span>
                               <button
                                 onClick={() => handleDebitTransfer(account)}
